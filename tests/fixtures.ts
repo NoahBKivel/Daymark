@@ -1,0 +1,20 @@
+import type { Task } from '../src/shared/model';
+export const task = (overrides: Partial<Task> = {}): Task => ({
+  id: 'task-one',
+  title: 'A task',
+  description: '',
+  listId: 'school',
+  color: null,
+  startDate: '2026-09-08',
+  dueDate: '2026-09-12',
+  dueTime: null,
+  timeZone: 'America/New_York',
+  completed: false,
+  completedAt: null,
+  checklist: [],
+  recurrence: null,
+  version: 1,
+  createdAt: '2026-09-01T00:00:00Z',
+  updatedAt: '2026-09-01T00:00:00Z',
+  ...overrides,
+});
