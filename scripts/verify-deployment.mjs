@@ -18,8 +18,15 @@ try {
   const page = await browser.newPage();
   const failures = [];
   page.on('pageerror', (error) => failures.push(error.message));
+  page.on('response', (response) => {
+    if (response.status() < 400) return;
+    const url = new URL(response.url());
+    if (response.status() === 401 && url.pathname === '/api/me') return;
+    failures.push(`${response.status()} ${url.pathname}`);
+  });
   page.on('console', (message) => {
-    if (message.type() === 'error') failures.push(message.text());
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:'))
+      failures.push(message.text());
   });
   await page.goto(`${origin}/?demo=1`);
   await page.locator('.fc-dayGridMonth-view').waitFor();

@@ -107,3 +107,7 @@ Real Google invitations, OAuth consent/refresh, Meet provisioning, and productio
 - For an account-deletion request, revoke the user's Google grant and remove owned task, mapping, sync, and preference rows before deleting the auth user. Google task copies are independent after account deletion; remove them first if requested.
 
 The code is organized into `src` (interface and shared types), `server` (auth, API, storage, Google, and sync), `migrations` (D1 schema), and `tests`.
+
+## Future architecture options
+
+- [Store Daymark tasks as Google Calendar events](docs/future-google-calendar-task-storage.md) is a deferred idea for potentially making Google Calendar authoritative for both events and tasks. It is not part of the current implementation.
