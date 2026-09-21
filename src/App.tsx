@@ -52,7 +52,14 @@ import {
   type Task,
   type TaskList,
 } from './shared/model';
-import { ColorPicker, EventEditor, FeedbackContext, Modal, TaskEditor } from './components/Dialogs';
+import {
+  ColorPicker,
+  CreationDialog,
+  EventEditor,
+  FeedbackContext,
+  Modal,
+  TaskEditor,
+} from './components/Dialogs';
 
 type Editor =
   | { kind: 'task'; task?: Task; date?: string; draft?: { title: string; description: string } }
@@ -1031,34 +1038,59 @@ export default function App() {
             </aside>
           )}
         </div>
-        {editor?.kind === 'task' && (
+        {editor?.kind === 'task' && editor.task && (
           <TaskEditor
-            draft={editor.draft}
-            onSwitch={({ date, ...draft }) => setEditor({ kind: 'event', date, draft })}
-            key={editor.task?.id || `new-task-${editor.date}`}
+            key={editor.task.id}
             client={client}
             settings={settings}
             lists={lists}
             task={editor.task}
-            date={editor.date}
             onClose={() => setEditor(null)}
             onSaved={saved}
           />
         )}
-        {editor?.kind === 'event' && (
+        {editor?.kind === 'event' && editor.event && (
           <EventEditor
-            draft={editor.draft}
-            onSwitch={({ date, ...draft }) => setEditor({ kind: 'task', date, draft })}
-            key={editor.event?.id || `new-event-${editor.date}`}
+            key={editor.event.id}
             client={client}
             settings={settings}
             calendars={calendars}
             event={editor.event}
-            date={editor.date}
             onClose={() => setEditor(null)}
             onSaved={saved}
           />
         )}
+        {editor &&
+          ((editor.kind === 'task' && !editor.task) ||
+            (editor.kind === 'event' && !editor.event)) && (
+            <CreationDialog kind={editor.kind} onClose={() => setEditor(null)}>
+              {editor.kind === 'task' ? (
+                <TaskEditor
+                  key={`new-task-${editor.date}`}
+                  draft={editor.draft}
+                  onSwitch={({ date, ...draft }) => setEditor({ kind: 'event', date, draft })}
+                  client={client}
+                  settings={settings}
+                  lists={lists}
+                  date={editor.date}
+                  onClose={() => setEditor(null)}
+                  onSaved={saved}
+                />
+              ) : (
+                <EventEditor
+                  key={`new-event-${editor.date}`}
+                  draft={editor.draft}
+                  onSwitch={({ date, ...draft }) => setEditor({ kind: 'task', date, draft })}
+                  client={client}
+                  settings={settings}
+                  calendars={calendars}
+                  date={editor.date}
+                  onClose={() => setEditor(null)}
+                  onSaved={saved}
+                />
+              )}
+            </CreationDialog>
+          )}
         {listEditor && (
           <Modal
             title={listEditor.id ? 'Edit task list' : 'New task list'}

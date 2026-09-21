@@ -10,9 +10,13 @@ test.beforeEach(async ({ page }) => {
 test('switches month creation between task and event while retaining title and date', async ({ page }) => {
   await page.locator('.fc-daygrid-day').last().locator('.fc-daygrid-day-frame').click({ position: { x: 12, y: 45 } });
   const dialog = page.getByRole('dialog');
+  const initialDialog = await dialog.elementHandle();
   await dialog.getByLabel('Task title', { exact: true }).fill('Switchable item');
   const date = await dialog.getByLabel('Deadline', { exact: true }).inputValue();
   await dialog.getByRole('button', { name: 'Event', exact: true }).click();
+  const switchedDialog = await dialog.elementHandle();
+  expect(await initialDialog?.evaluate((node, other) => node === other, switchedDialog)).toBe(true);
+  await expect(dialog.locator('.modal-heading p')).toHaveCount(0);
   await expect(dialog.getByLabel('Event title')).toHaveValue('Switchable item');
   await expect(dialog.getByLabel('Event start')).toHaveValue(new RegExp(`^${date}`));
   await expect(dialog.getByRole('button', { name: 'Event', exact: true })).toHaveAttribute('aria-pressed', 'true');

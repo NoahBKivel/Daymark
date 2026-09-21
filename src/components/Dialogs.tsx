@@ -32,6 +32,7 @@ import {
 import type { Client } from '../api';
 
 export const FeedbackContext = createContext('');
+const EmbeddedModalContext = createContext(false);
 export function Modal({
   title,
   description,
@@ -46,6 +47,8 @@ export function Modal({
   wide?: boolean;
 }) {
   const feedback = useContext(FeedbackContext);
+  const embedded = useContext(EmbeddedModalContext);
+  if (embedded) return <>{children}</>;
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -74,6 +77,21 @@ export function Modal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+export function CreationDialog({
+  kind,
+  children,
+  onClose,
+}: {
+  kind: 'event' | 'task';
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <Modal title={kind === 'event' ? 'Something to look forward to' : 'Make room for a task'} onClose={onClose}>
+      <EmbeddedModalContext.Provider value>{children}</EmbeddedModalContext.Provider>
+    </Modal>
   );
 }
 export const COLORS = [
@@ -731,7 +749,9 @@ export function EventEditor({
       description={
         readOnly
           ? 'This event is managed by its organizer.'
-          : settings.timeZone.replaceAll('_', ' ')
+          : event
+            ? settings.timeZone.replaceAll('_', ' ')
+            : undefined
       }
       onClose={onClose}
     >
