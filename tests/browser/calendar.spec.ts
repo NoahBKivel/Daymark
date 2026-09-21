@@ -28,7 +28,7 @@ test('renders a working public calendar with timed events and opens a day timeli
     page.getByRole('heading', { name: DateTime.now().toFormat('MMMM yyyy') }),
   ).toBeVisible();
   await expect(
-    page.locator('.fc-daygrid-event').filter({ hasText: 'Textbook presentation' }),
+    page.locator('.fc-daygrid-event').filter({ hasText: 'Textbook presentation' }).first(),
   ).toBeVisible();
   await expect(
     page.locator('.fc-daygrid-event').filter({ hasText: 'Coffee with Jenna' }),
