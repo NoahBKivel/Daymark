@@ -248,13 +248,30 @@ export function RepeatFields({
     </div>
   );
 }
+function CreationSwitch({ kind, onSwitch }: { kind: 'event' | 'task'; onSwitch: () => void }) {
+  return (
+    <div className="creation-switch" role="group" aria-label="Create as">
+      {(['event', 'task'] as const).map((option) => (
+        <button key={option} type="button" aria-pressed={kind === option}
+          onClick={() => { if (kind !== option) onSwitch(); }}>
+          {option === 'event' ? 'Event' : 'Task'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 type BaseProps = {
+  draft?: { title: string; description: string };
+  onSwitch?: (draft: { title: string; description: string; date?: string }) => void;
   client: Client;
   settings: Settings;
   onClose: () => void;
   onSaved: (message: string) => void;
 };
 export function TaskEditor({
+  draft,
+  onSwitch,
   client,
   settings,
   lists,
@@ -267,8 +284,8 @@ export function TaskEditor({
     task
       ? { ...task }
       : {
-          title: '',
-          description: '',
+          title: draft?.title || '',
+          description: draft?.description || '',
           listId: lists[0]?.id || '',
           color: null,
           startDate: null,
@@ -333,6 +350,7 @@ export function TaskEditor({
         }}
         className="editor-form"
       >
+        {!task && onSwitch && <CreationSwitch kind="task" onSwitch={() => onSwitch({ title: form.title, description: form.description, date: form.startDate || form.dueDate || undefined })} />}
         <div className="title-field">
           <button
             type="button"
@@ -573,6 +591,8 @@ export function TaskEditor({
   );
 }
 export function EventEditor({
+  draft,
+  onSwitch,
   client,
   settings,
   calendars,
@@ -586,7 +606,7 @@ export function EventEditor({
     { zone: settings.timeZone },
   );
   const initial = date?.includes('T') ? initialDate : initialDate.set({ hour: 10 });
-  const [title, setTitle] = useState(event?.summary || '');
+  const [title, setTitle] = useState(event?.summary || draft?.title || '');
   const [calendarId, setCalendarId] = useState(
     event?.calendarId || calendars.find((c) => c.accessRole === 'owner')?.id || '',
   );
@@ -604,7 +624,7 @@ export function EventEditor({
           .setZone(settings.timeZone)
           .toFormat("yyyy-MM-dd'T'HH:mm"),
   );
-  const [description, setDescription] = useState(event?.description || '');
+  const [description, setDescription] = useState(event?.description || draft?.description || '');
   const [location, setLocation] = useState(event?.location || '');
   const [guests, setGuests] = useState(
     event?.attendees
@@ -722,6 +742,7 @@ export function EventEditor({
           void save();
         }}
       >
+        {!event && onSwitch && <CreationSwitch kind="event" onSwitch={() => onSwitch({ title, description, date: start.slice(0, 10) })} />}
         <fieldset disabled={readOnly} className="event-fields">
           <input
             autoFocus

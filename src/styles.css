@@ -1981,3 +1981,22 @@ body:has([role='dialog']) .toast {
     font-size: 12px;
   }
 }
+.creation-switch {
+  display: flex;
+  gap: 4px;
+  align-self: flex-start;
+}
+.creation-switch button {
+  border: 0;
+  border-radius: 16px;
+  padding: 12px 18px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.creation-switch button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

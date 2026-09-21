@@ -55,8 +55,8 @@ import {
 import { ColorPicker, EventEditor, FeedbackContext, Modal, TaskEditor } from './components/Dialogs';
 
 type Editor =
-  | { kind: 'task'; task?: Task; date?: string }
-  | { kind: 'event'; event?: CalendarEvent; date?: string }
+  | { kind: 'task'; task?: Task; date?: string; draft?: { title: string; description: string } }
+  | { kind: 'event'; event?: CalendarEvent; date?: string; draft?: { title: string; description: string } }
   | null;
 const todayString = () => DateTime.now().toISODate()!;
 const initRange = () => {
@@ -1033,6 +1033,8 @@ export default function App() {
         </div>
         {editor?.kind === 'task' && (
           <TaskEditor
+            draft={editor.draft}
+            onSwitch={({ date, ...draft }) => setEditor({ kind: 'event', date, draft })}
             key={editor.task?.id || `new-task-${editor.date}`}
             client={client}
             settings={settings}
@@ -1045,6 +1047,8 @@ export default function App() {
         )}
         {editor?.kind === 'event' && (
           <EventEditor
+            draft={editor.draft}
+            onSwitch={({ date, ...draft }) => setEditor({ kind: 'task', date, draft })}
             key={editor.event?.id || `new-event-${editor.date}`}
             client={client}
             settings={settings}

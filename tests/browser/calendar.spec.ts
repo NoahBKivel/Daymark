@@ -7,6 +7,20 @@ test.beforeEach(async ({ page }) => {
   );
   await page.goto('/?demo=1');
 });
+test('switches month creation between task and event while retaining title and date', async ({ page }) => {
+  await page.locator('.fc-daygrid-day').last().locator('.fc-daygrid-day-frame').click({ position: { x: 12, y: 45 } });
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Task title', { exact: true }).fill('Switchable item');
+  const date = await dialog.getByLabel('Deadline', { exact: true }).inputValue();
+  await dialog.getByRole('button', { name: 'Event', exact: true }).click();
+  await expect(dialog.getByLabel('Event title')).toHaveValue('Switchable item');
+  await expect(dialog.getByLabel('Event start')).toHaveValue(new RegExp(`^${date}`));
+  await expect(dialog.getByRole('button', { name: 'Event', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Task', exact: true }).click();
+  await expect(dialog.getByLabel('Task title', { exact: true })).toHaveValue('Switchable item');
+  await expect(dialog.getByLabel('Deadline', { exact: true })).toHaveValue(date);
+});
+
 test('renders a working public calendar with timed events and opens a day timeline', async ({
   page,
 }) => {
