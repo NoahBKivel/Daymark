@@ -70,8 +70,11 @@ test('expands a crowded month row instead of opening the more popover', async ({
   }, date);
   await page.reload();
 
-  const moreLink = page.locator('[data-date="' + date + '"] .fc-daygrid-more-link');
+  const moreLink = page
+    .locator('[data-date="' + date + '"] .fc-daygrid-more-link')
+    .filter({ hasText: /^Show \+/ });
   await expect(moreLink).toBeVisible();
+  await expect(moreLink).toHaveText(/Show \+ \d+ more/);
   const heightBefore = await moreLink.evaluate(
     (element) => element.closest('tr')!.getBoundingClientRect().height,
   );
@@ -81,28 +84,29 @@ test('expands a crowded month row instead of opening the more popover', async ({
   await expect(page.locator('.fc-popover')).toHaveCount(0);
   const expandedCell = page.locator('[data-date="' + date + '"]');
   await expect(expandedCell).toContainText('Overflow task 8');
-  const showLess = page.getByRole('button', { name: 'Show less' });
-  await expect(showLess).toBeVisible();
+  const hideButton = expandedCell.getByRole('button', { name: 'Hide' });
+  await expect(hideButton).toBeVisible();
   const heightAfter = await page
     .locator('[data-date="' + date + '"]')
     .evaluate((element) => element.closest('tr')!.getBoundingClientRect().height);
   expect(heightAfter).toBeGreaterThan(heightBefore);
-  const offsetBeforeScroll = await showLess.evaluate((button, targetDate) => {
+  const offsetBeforeScroll = await hideButton.evaluate((button, targetDate) => {
     const cell = document.querySelector(`[data-date="${targetDate}"]`)!;
     return button.getBoundingClientRect().top - cell.getBoundingClientRect().bottom;
   }, date);
   await page.locator('.fc-scroller-liquid-absolute').evaluate((scroller) => {
     scroller.scrollTop += 100;
   });
-  const offsetAfterScroll = await showLess.evaluate((button, targetDate) => {
+  const offsetAfterScroll = await hideButton.evaluate((button, targetDate) => {
     const cell = document.querySelector(`[data-date="${targetDate}"]`)!;
     return button.getBoundingClientRect().top - cell.getBoundingClientRect().bottom;
   }, date);
   expect(Math.abs(offsetAfterScroll - offsetBeforeScroll)).toBeLessThan(1);
 
-  await showLess.click();
-  await expect(showLess).toHaveCount(0);
+  await hideButton.click();
+  await expect(hideButton).toHaveCount(0);
   await expect(moreLink).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const heightCollapsed = await expandedCell.evaluate(
     (element) => element.closest('tr')!.getBoundingClientRect().height,
   );

@@ -204,20 +204,15 @@ export default function App() {
     let button: HTMLButtonElement | null = null;
     const frame = requestAnimationFrame(() => {
       const calendar = document.querySelector<HTMLElement>('.calendar-container');
-      const dayGridBody = calendar?.querySelector<HTMLElement>('.fc-daygrid-body');
-      const dayCell = dayGridBody?.querySelector<HTMLElement>(
-        `[data-date="${expandedMonthDay.date}"]`,
+      const dayBottom = calendar?.querySelector<HTMLElement>(
+        `[data-date="${expandedMonthDay.date}"] .fc-daygrid-day-bottom`,
       );
-      if (!dayGridBody || !dayCell) return;
-      const dayGridRect = dayGridBody.getBoundingClientRect();
-      const cellRect = dayCell.getBoundingClientRect();
+      if (!dayBottom) return;
 
       button = document.createElement('button');
       button.type = 'button';
-      button.className = 'fc-daygrid-show-less';
-      button.textContent = 'Show less';
-      button.style.left = `${cellRect.left - dayGridRect.left + 6}px`;
-      button.style.top = `${cellRect.bottom - dayGridRect.top - 24}px`;
+      button.className = 'fc-daygrid-more-link fc-more-link';
+      button.textContent = 'Hide';
       button.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -227,7 +222,7 @@ export default function App() {
           requestAnimationFrame(() => setCalendarVisible(true));
         });
       });
-      dayGridBody.appendChild(button);
+      dayBottom.appendChild(button);
     });
 
     return () => {
@@ -849,6 +844,7 @@ export default function App() {
                 selectMirror
                 eventResizableFromStart
                 dayMaxEvents={monthDayIsExpanded ? false : 3}
+                moreLinkContent={(info) => `Show + ${info.num} more`}
                 moreLinkClick={(info) => {
                   setExpandedMonthDay({
                     monthStart: info.view.currentStart.toISOString().slice(0, 10),
