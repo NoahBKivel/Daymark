@@ -186,7 +186,7 @@ export default function App() {
   );
   const [listEditor, setListEditor] = useState<Partial<TaskList> | null>(null);
   const [listName, setListName] = useState('');
-  const [listColor, setListColor] = useState<string | null>(DEFAULT_CALENDAR_COLOR.hex);
+  const [listColor, setListColor] = useState<string | null>('#77946d');
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('open');
   const [taskListFilter, setTaskListFilter] = useState('');
@@ -337,8 +337,7 @@ export default function App() {
         extendedProps: {
           kind: 'task',
           task: t,
-          color:
-            t.color || lists.find((l) => l.id === t.listId)?.color || DEFAULT_CALENDAR_COLOR.hex,
+          color: t.color || lists.find((l) => l.id === t.listId)?.color || '#77946d',
         },
       })),
       ...visibleEvents.map((e) => ({
@@ -440,7 +439,7 @@ export default function App() {
   function openList(list?: TaskList) {
     setListEditor(list || {});
     setListName(list?.name || '');
-    setListColor(list?.color || DEFAULT_CALENDAR_COLOR.hex);
+    setListColor(list?.color || '#77946d');
   }
   async function exportData() {
     try {

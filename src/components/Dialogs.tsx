@@ -99,7 +99,16 @@ export function CreationDialog({
     </Modal>
   );
 }
-export const COLORS = GOOGLE_EVENT_COLORS.map((color) => color.hex);
+export const COLORS = [
+  '#77946d',
+  '#6b9fbe',
+  '#c38b60',
+  '#b783a0',
+  '#a18bc4',
+  '#c9a650',
+  '#659c96',
+  '#74849d',
+];
 export function ColorPicker({
   value,
   onChange,
