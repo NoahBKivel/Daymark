@@ -87,6 +87,18 @@ test('expands a crowded month row instead of opening the more popover', async ({
     .locator('[data-date="' + date + '"]')
     .evaluate((element) => element.closest('tr')!.getBoundingClientRect().height);
   expect(heightAfter).toBeGreaterThan(heightBefore);
+  const offsetBeforeScroll = await showLess.evaluate((button, targetDate) => {
+    const cell = document.querySelector(`[data-date="${targetDate}"]`)!;
+    return button.getBoundingClientRect().top - cell.getBoundingClientRect().bottom;
+  }, date);
+  await page.locator('.fc-scroller-liquid-absolute').evaluate((scroller) => {
+    scroller.scrollTop += 100;
+  });
+  const offsetAfterScroll = await showLess.evaluate((button, targetDate) => {
+    const cell = document.querySelector(`[data-date="${targetDate}"]`)!;
+    return button.getBoundingClientRect().top - cell.getBoundingClientRect().bottom;
+  }, date);
+  expect(Math.abs(offsetAfterScroll - offsetBeforeScroll)).toBeLessThan(1);
 
   await showLess.click();
   await expect(showLess).toHaveCount(0);

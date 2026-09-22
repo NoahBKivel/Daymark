@@ -204,19 +204,20 @@ export default function App() {
     let button: HTMLButtonElement | null = null;
     const frame = requestAnimationFrame(() => {
       const calendar = document.querySelector<HTMLElement>('.calendar-container');
-      const dayCell = calendar?.querySelector<HTMLElement>(
+      const dayGridBody = calendar?.querySelector<HTMLElement>('.fc-daygrid-body');
+      const dayCell = dayGridBody?.querySelector<HTMLElement>(
         `[data-date="${expandedMonthDay.date}"]`,
       );
-      if (!calendar || !dayCell) return;
-      const calendarRect = calendar.getBoundingClientRect();
+      if (!dayGridBody || !dayCell) return;
+      const dayGridRect = dayGridBody.getBoundingClientRect();
       const cellRect = dayCell.getBoundingClientRect();
 
       button = document.createElement('button');
       button.type = 'button';
       button.className = 'fc-daygrid-show-less';
       button.textContent = 'Show less';
-      button.style.left = `${cellRect.left - calendarRect.left + 6}px`;
-      button.style.top = `${cellRect.bottom - calendarRect.top - 24}px`;
+      button.style.left = `${cellRect.left - dayGridRect.left + 6}px`;
+      button.style.top = `${cellRect.bottom - dayGridRect.top - 24}px`;
       button.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -226,7 +227,7 @@ export default function App() {
           requestAnimationFrame(() => setCalendarVisible(true));
         });
       });
-      calendar.appendChild(button);
+      dayGridBody.appendChild(button);
     });
 
     return () => {
