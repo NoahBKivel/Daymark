@@ -81,10 +81,20 @@ test('expands a crowded month row instead of opening the more popover', async ({
   await expect(page.locator('.fc-popover')).toHaveCount(0);
   const expandedCell = page.locator('[data-date="' + date + '"]');
   await expect(expandedCell).toContainText('Overflow task 8');
+  const showLess = page.getByRole('button', { name: 'Show less' });
+  await expect(showLess).toBeVisible();
   const heightAfter = await page
     .locator('[data-date="' + date + '"]')
     .evaluate((element) => element.closest('tr')!.getBoundingClientRect().height);
   expect(heightAfter).toBeGreaterThan(heightBefore);
+
+  await showLess.click();
+  await expect(showLess).toHaveCount(0);
+  await expect(moreLink).toBeVisible();
+  const heightCollapsed = await expandedCell.evaluate(
+    (element) => element.closest('tr')!.getBoundingClientRect().height,
+  );
+  expect(heightCollapsed).toBeLessThan(heightAfter);
 });
 test('creates a spanning task, retains completion and dates after reload, and supports checklists', async ({
   page,

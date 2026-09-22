@@ -10,6 +10,7 @@
   font-synthesis: none;
   --bg: #fff;
   --calendar-bg: #fff;
+  --sidebar-bg: #fafbf9;
   --panel: #fafbf9;
   --soft: #f2f5f1;
   --line: #e7ebe5;
@@ -26,6 +27,7 @@
 :root[data-theme='dark'] {
   --bg: #1b201d;
   --calendar-bg: #181818;
+  --sidebar-bg: #202020;
   --panel: #181d1a;
   --soft: #252d27;
   --line: #303931;
@@ -275,7 +277,7 @@ a {
 .sidebar {
   width: 245px;
   padding: 27px 23px 18px;
-  background: var(--panel);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--line);
   flex-shrink: 0;
   display: flex;
@@ -506,6 +508,7 @@ a {
   padding: 0 29px;
   gap: 20px;
   flex-shrink: 0;
+  background: var(--calendar-bg);
 }
 .calendar-title-group h1 {
   font-size: 26px;
@@ -799,6 +802,19 @@ a {
   color: var(--muted);
   margin: 3px 6px;
 }
+.calendar-container > .fc-daygrid-show-less {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  padding: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.calendar-container > .fc-daygrid-show-less:hover {
+  color: var(--ink);
+}
 .fc .fc-popover {
   background: var(--bg);
   border: 1px solid var(--line);
@@ -848,7 +864,7 @@ a {
   padding: 30px 21px 18px;
   display: flex;
   flex-direction: column;
-  background: var(--panel);
+  background: var(--sidebar-bg);
   min-height: 0;
 }
 .task-panel-heading {

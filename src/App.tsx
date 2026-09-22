@@ -72,6 +72,10 @@ type Editor =
       draft?: { title: string; description: string };
     }
   | null;
+type ExpandedMonthDay = {
+  monthStart: string;
+  date: string;
+};
 const todayString = () => DateTime.now().toISODate()!;
 const initRange = () => {
   const now = DateTime.now().startOf('month');
@@ -172,7 +176,8 @@ export default function App() {
   const [range, setRange] = useState(initRange);
   const [title, setTitle] = useState(DateTime.now().toFormat('MMMM yyyy'));
   const [view, setView] = useState('dayGridMonth');
-  const [expandedMonthStart, setExpandedMonthStart] = useState<string | null>(null);
+  const [expandedMonthDay, setExpandedMonthDay] = useState<ExpandedMonthDay | null>(null);
+  const [calendarVisible, setCalendarVisible] = useState(true);
   const [currentMonthStart, setCurrentMonthStart] = useState(
     DateTime.now().startOf('month').toISODate(),
   );
@@ -190,6 +195,45 @@ export default function App() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('open');
   const [taskListFilter, setTaskListFilter] = useState('');
+  const monthDayIsExpanded =
+    expandedMonthDay !== null && expandedMonthDay.monthStart === currentMonthStart;
+
+  useEffect(() => {
+    if (!monthDayIsExpanded || !expandedMonthDay) return;
+
+    let button: HTMLButtonElement | null = null;
+    const frame = requestAnimationFrame(() => {
+      const calendar = document.querySelector<HTMLElement>('.calendar-container');
+      const dayCell = calendar?.querySelector<HTMLElement>(
+        `[data-date="${expandedMonthDay.date}"]`,
+      );
+      if (!calendar || !dayCell) return;
+      const calendarRect = calendar.getBoundingClientRect();
+      const cellRect = dayCell.getBoundingClientRect();
+
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'fc-daygrid-show-less';
+      button.textContent = 'Show less';
+      button.style.left = `${cellRect.left - calendarRect.left + 6}px`;
+      button.style.top = `${cellRect.bottom - calendarRect.top - 24}px`;
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setExpandedMonthDay(null);
+        setCalendarVisible(false);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setCalendarVisible(true));
+        });
+      });
+      calendar.appendChild(button);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      button?.remove();
+    };
+  }, [expandedMonthDay, monthDayIsExpanded]);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(0);
@@ -786,10 +830,12 @@ export default function App() {
               </div>
             )}
             <div className={`calendar-container ${rangeQuery.isFetching ? 'is-fetching' : ''}`}>
-              <FullCalendar
+              {calendarVisible && (
+                <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
-                initialView="dayGridMonth"
+                initialView={view}
+                initialDate={currentMonthStart}
                 headerToolbar={false}
                 height="100%"
                 timeZone={settings.timeZone}
@@ -801,14 +847,15 @@ export default function App() {
                 selectable
                 selectMirror
                 eventResizableFromStart
-                dayMaxEvents={
-                  expandedMonthStart !== null && expandedMonthStart === currentMonthStart ? false : 3
-                }
+                dayMaxEvents={monthDayIsExpanded ? false : 3}
                 moreLinkClick={(info) => {
-                  setExpandedMonthStart(
-                    info.view.currentStart.toISOString().slice(0, 10),
-                  );
-                  return info.view.type;
+                  setExpandedMonthDay({
+                    monthStart: info.view.currentStart.toISOString().slice(0, 10),
+                    date: info.date.toISOString().slice(0, 10),
+                  });
+                  // FullCalendar treats a void return as a request to open its popover.
+                  // A truthy non-view result cancels that default without navigating or scrolling.
+                  return true as never;
                 }}
                 slotMinTime="00:00:00"
                 slotMaxTime="24:00:00"
@@ -884,7 +931,8 @@ export default function App() {
                     setToast((e as Error).message);
                   }
                 }}
-              />
+                />
+              )}
             </div>
             <footer className="calendar-footer">
               {!demo && (
