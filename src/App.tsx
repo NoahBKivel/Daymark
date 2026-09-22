@@ -177,7 +177,6 @@ export default function App() {
   const [title, setTitle] = useState(DateTime.now().toFormat('MMMM yyyy'));
   const [view, setView] = useState('dayGridMonth');
   const [expandedMonthDay, setExpandedMonthDay] = useState<ExpandedMonthDay | null>(null);
-  const [calendarVisible, setCalendarVisible] = useState(true);
   const [currentMonthStart, setCurrentMonthStart] = useState(
     DateTime.now().startOf('month').toISODate(),
   );
@@ -216,10 +215,57 @@ export default function App() {
       button.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
+        const dayCell = dayBottom.closest<HTMLElement>('[data-date]');
+        const dayTop = dayCell?.getBoundingClientRect().top;
+        const expandedDate = expandedMonthDay.date;
+        const restoreDayTop = () => {
+          const restoredDay = document.querySelector<HTMLElement>(
+            `.calendar-container [data-date="${expandedDate}"]`,
+          );
+          const restoredScroller = restoredDay?.closest<HTMLElement>('.fc-scroller');
+          if (restoredDay && restoredScroller && dayTop !== undefined) {
+            const difference = restoredDay.getBoundingClientRect().top - dayTop;
+            if (difference > 0.5) {
+              const desiredScrollTop = restoredScroller.scrollTop + difference;
+              const maximumScrollTop =
+                restoredScroller.scrollHeight - restoredScroller.clientHeight;
+              if (desiredScrollTop > maximumScrollTop) {
+                let spacer = restoredScroller.querySelector<HTMLElement>(
+                  ':scope > .calendar-collapse-spacer',
+                );
+                if (!spacer) {
+                  spacer = document.createElement('div');
+                  spacer.className = 'calendar-collapse-spacer';
+                  restoredScroller.appendChild(spacer);
+                }
+                const currentHeight = Number.parseFloat(spacer.style.height || '0');
+                spacer.style.height = `${currentHeight + desiredScrollTop - maximumScrollTop}px`;
+                void spacer.offsetHeight;
+              }
+              restoredScroller.scrollTop = desiredScrollTop;
+            } else if (difference < -0.5) {
+              restoredScroller.scrollTop += difference;
+            }
+            return Math.abs(difference) <= 0.5;
+          }
+          return false;
+        };
         setExpandedMonthDay(null);
-        setCalendarVisible(false);
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => setCalendarVisible(true));
+          requestAnimationFrame(() => {
+            calendarRef.current?.getApi().updateSize();
+            let attempts = 0;
+            let stableChecks = 0;
+            const anchor = window.setInterval(() => {
+              const restoredDay = document.querySelector<HTMLElement>(
+                `.calendar-container [data-date="${expandedDate}"]`,
+              );
+              if (restoredDay && restoreDayTop()) stableChecks += 1;
+              else stableChecks = 0;
+              attempts += 1;
+              if (stableChecks >= 3 || attempts >= 20) window.clearInterval(anchor);
+            }, 50);
+          });
         });
       });
       dayBottom.appendChild(button);
@@ -826,8 +872,7 @@ export default function App() {
               </div>
             )}
             <div className={`calendar-container ${rangeQuery.isFetching ? 'is-fetching' : ''}`}>
-              {calendarVisible && (
-                <FullCalendar
+              <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
                 initialView={view}
@@ -846,6 +891,9 @@ export default function App() {
                 dayMaxEvents={monthDayIsExpanded ? false : 3}
                 moreLinkContent={(info) => `Show + ${info.num} more`}
                 moreLinkClick={(info) => {
+                  document
+                    .querySelectorAll('.calendar-collapse-spacer')
+                    .forEach((spacer) => spacer.remove());
                   setExpandedMonthDay({
                     monthStart: info.view.currentStart.toISOString().slice(0, 10),
                     date: info.date.toISOString().slice(0, 10),
@@ -929,7 +977,6 @@ export default function App() {
                   }
                 }}
                 />
-              )}
             </div>
             <footer className="calendar-footer">
               {!demo && (

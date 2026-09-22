@@ -837,12 +837,14 @@ a {
 .fc .fc-daygrid-day-events {
   margin-bottom: 3px !important;
 }
-.fc .fc-scrollgrid-section-body table {
-  height: 100%;
-}
 .fc .fc-scroller-liquid-absolute {
+  overflow-anchor: none;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
+}
+.calendar-collapse-spacer {
+  width: 1px;
+  pointer-events: none;
 }
 .task-panel {
   width: 278px;

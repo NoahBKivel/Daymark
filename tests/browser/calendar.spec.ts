@@ -102,11 +102,17 @@ test('expands a crowded month row instead of opening the more popover', async ({
     return button.getBoundingClientRect().top - cell.getBoundingClientRect().bottom;
   }, date);
   expect(Math.abs(offsetAfterScroll - offsetBeforeScroll)).toBeLessThan(1);
-
+  await hideButton.scrollIntoViewIfNeeded();
+  const dayTopBeforeCollapse = await expandedCell.evaluate(
+    (element) => element.getBoundingClientRect().top,
+  );
   await hideButton.click();
   await expect(hideButton).toHaveCount(0);
   await expect(moreLink).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect
+    .poll(() => expandedCell.evaluate((element) => element.getBoundingClientRect().top))
+    .toBeCloseTo(dayTopBeforeCollapse, 0);
   const heightCollapsed = await expandedCell.evaluate(
     (element) => element.closest('tr')!.getBoundingClientRect().height,
   );
