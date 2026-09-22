@@ -64,6 +64,7 @@ describe('Google event integration', () => {
       attendees: [{ email: 'guest@example.com' }],
       transparency: 'opaque',
       visibility: 'default',
+      colorId: '4',
     };
     await google.editEvent({
       calendarId: 'cal',
@@ -78,6 +79,7 @@ describe('Google event integration', () => {
     expect(request.mock.calls[0][0]).toContain('sendUpdates=all');
     expect(request.mock.calls[0][3]).toBe('revision-1');
     expect(request.mock.calls[0][2]).toMatchObject({
+      colorId: '4',
       attendees: [{ responseStatus: 'accepted' }],
       conferenceData: { createRequest: { conferenceSolutionKey: { type: 'hangoutsMeet' } } },
     });

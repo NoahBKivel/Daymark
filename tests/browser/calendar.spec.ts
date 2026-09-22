@@ -13,12 +13,15 @@ test('switches month creation between task and event while retaining title and d
   const initialDialog = await dialog.elementHandle();
   await dialog.getByLabel('Task title', { exact: true }).fill('Switchable item');
   const date = await dialog.getByLabel('Deadline', { exact: true }).inputValue();
+  const weekday = DateTime.fromISO(date).toFormat('ccc');
+  await expect(dialog.getByLabel('Deadline', { exact: true }).locator('..')).toContainText(weekday);
   await dialog.getByRole('button', { name: 'Event', exact: true }).click();
   const switchedDialog = await dialog.elementHandle();
   expect(await initialDialog?.evaluate((node, other) => node === other, switchedDialog)).toBe(true);
   await expect(dialog.locator('.modal-heading p')).toHaveCount(0);
   await expect(dialog.getByLabel('Event title')).toHaveValue('Switchable item');
   await expect(dialog.getByLabel('Event start')).toHaveValue(new RegExp(`^${date}`));
+  await expect(dialog.getByLabel('Event start').locator('..')).toContainText(weekday);
   await expect(dialog.getByRole('button', { name: 'Event', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('button', { name: 'Task', exact: true }).click();
   await expect(dialog.getByLabel('Task title', { exact: true })).toHaveValue('Switchable item');
@@ -44,6 +47,44 @@ test('renders a working public calendar with timed events and opens a day timeli
   ).toBeVisible();
   await page.getByRole('button', { name: 'Week', exact: true }).click();
   await expect(page.locator('.fc-timeGridWeek-view')).toBeVisible();
+});
+test('expands a crowded month row instead of opening the more popover', async ({ page }) => {
+  const todayCell = page.locator('.fc-day-today');
+  const date = (await todayCell.getAttribute('data-date'))!;
+  await page.evaluate((dueDate) => {
+    const key = 'daymark.demo.v1';
+    const state = JSON.parse(localStorage.getItem(key)!);
+    const template = state.tasks[0];
+    state.tasks.push(
+      ...Array.from({ length: 8 }, (_, index) => ({
+        ...template,
+        id: 'overflow-' + index,
+        title: 'Overflow task ' + (index + 1),
+        startDate: dueDate,
+        dueDate,
+        checklist: [],
+        recurrence: null,
+      })),
+    );
+    localStorage.setItem(key, JSON.stringify(state));
+  }, date);
+  await page.reload();
+
+  const moreLink = page.locator('[data-date="' + date + '"] .fc-daygrid-more-link');
+  await expect(moreLink).toBeVisible();
+  const heightBefore = await moreLink.evaluate(
+    (element) => element.closest('tr')!.getBoundingClientRect().height,
+  );
+  await moreLink.click();
+
+  await expect(moreLink).toHaveCount(0);
+  await expect(page.locator('.fc-popover')).toHaveCount(0);
+  const expandedCell = page.locator('[data-date="' + date + '"]');
+  await expect(expandedCell).toContainText('Overflow task 8');
+  const heightAfter = await page
+    .locator('[data-date="' + date + '"]')
+    .evaluate((element) => element.closest('tr')!.getBoundingClientRect().height);
+  expect(heightAfter).toBeGreaterThan(heightBefore);
 });
 test('creates a spanning task, retains completion and dates after reload, and supports checklists', async ({
   page,
@@ -94,9 +135,19 @@ test('supports custom list colors, dark mode, keyboard dialog dismissal, and an 
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await page.getByRole('button', { name: 'Event', exact: true }).click();
   await page.getByLabel('Event title').fill('A test appointment');
+  await expect(page.getByLabel('Visibility')).toHaveValue('private');
+  await page.getByRole('button', { name: 'Event color Sage' }).click();
   await page.getByRole('button', { name: 'Save event' }).click();
   await page.locator('.fc-day-today .fc-daygrid-day-number').click();
-  await expect(page.locator('.fc-event').filter({ hasText: 'A test appointment' })).toBeVisible();
+  const appointment = page.locator('.fc-event').filter({ hasText: 'A test appointment' });
+  await expect(appointment).toBeVisible();
+  await expect
+    .poll(() =>
+      appointment.locator('.event-card').evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--event-color').trim(),
+      ),
+    )
+    .toBe('#33b679');
 });
 test('exports and restores task data without authorization secrets', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();

@@ -19,6 +19,8 @@ import { z } from 'zod';
 import { addDays } from '../shared/dates';
 import {
   eventInputSchema,
+  DEFAULT_CALENDAR_COLOR,
+  GOOGLE_EVENT_COLORS,
   taskInputSchema,
   type CalendarEvent,
   type CalendarInfo,
@@ -89,29 +91,25 @@ export function CreationDialog({
   onClose: () => void;
 }) {
   return (
-    <Modal title={kind === 'event' ? 'Something to look forward to' : 'Make room for a task'} onClose={onClose}>
+    <Modal
+      title={kind === 'event' ? 'Something to look forward to' : 'Make room for a task'}
+      onClose={onClose}
+    >
       <EmbeddedModalContext.Provider value>{children}</EmbeddedModalContext.Provider>
     </Modal>
   );
 }
-export const COLORS = [
-  '#77946d',
-  '#6b9fbe',
-  '#c38b60',
-  '#b783a0',
-  '#a18bc4',
-  '#c9a650',
-  '#659c96',
-  '#74849d',
-];
+export const COLORS = GOOGLE_EVENT_COLORS.map((color) => color.hex);
 export function ColorPicker({
   value,
   onChange,
   inherit = false,
+  custom = true,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
   inherit?: boolean;
+  custom?: boolean;
 }) {
   return (
     <div className="color-picker">
@@ -137,15 +135,50 @@ export function ColorPicker({
           {value === c && <Check size={14} />}
         </button>
       ))}
-      <label className="custom-color" title="Custom color">
-        <span>Custom</span>
-        <input
-          aria-label="Custom color"
-          type="color"
-          value={value || COLORS[0]}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </label>
+      {custom && (
+        <label className="custom-color" title="Custom color">
+          <span>Custom</span>
+          <input
+            aria-label="Custom color"
+            type="color"
+            value={value || COLORS[0]}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+function EventColorPicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  return (
+    <div className="color-picker event-color-picker">
+      <button
+        type="button"
+        className={`color-inherit ${!value ? 'selected' : ''}`}
+        aria-pressed={!value}
+        onClick={() => onChange(null)}
+      >
+        Calendar color
+      </button>
+      {GOOGLE_EVENT_COLORS.map((color) => (
+        <button
+          type="button"
+          key={color.id}
+          aria-label={`Event color ${color.name}`}
+          aria-pressed={value === color.id}
+          className="color-choice"
+          style={{ backgroundColor: color.hex }}
+          onClick={() => onChange(color.id)}
+        >
+          {value === color.id && <Check size={14} />}
+        </button>
+      ))}
     </div>
   );
 }
@@ -270,11 +303,50 @@ function CreationSwitch({ kind, onSwitch }: { kind: 'event' | 'task'; onSwitch: 
   return (
     <div className="creation-switch" role="group" aria-label="Create as">
       {(['event', 'task'] as const).map((option) => (
-        <button key={option} type="button" aria-pressed={kind === option}
-          onClick={() => { if (kind !== option) onSwitch(); }}>
+        <button
+          key={option}
+          type="button"
+          aria-pressed={kind === option}
+          onClick={() => {
+            if (kind !== option) onSwitch();
+          }}
+        >
           {option === 'event' ? 'Event' : 'Task'}
         </button>
       ))}
+    </div>
+  );
+}
+
+function WeekdayDateInput({
+  label,
+  type,
+  value,
+  timeZone,
+  required,
+  onChange,
+}: {
+  label: string;
+  type: 'date' | 'datetime-local';
+  value: string;
+  timeZone: string;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const date = value.slice(0, 10);
+  const weekday = date
+    ? DateTime.fromISO(date, { zone: timeZone }).setLocale('en-US').toFormat('ccc')
+    : '—';
+  return (
+    <div className="weekday-date-input">
+      <span aria-hidden="true">{weekday}</span>
+      <input
+        aria-label={label}
+        type={type}
+        value={value}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </div>
   );
 }
@@ -305,7 +377,7 @@ export function TaskEditor({
           title: draft?.title || '',
           description: draft?.description || '',
           listId: lists[0]?.id || '',
-          color: null,
+          color: DEFAULT_CALENDAR_COLOR.hex,
           startDate: null,
           dueDate: date || null,
           dueTime: null,
@@ -368,7 +440,18 @@ export function TaskEditor({
         }}
         className="editor-form"
       >
-        {!task && onSwitch && <CreationSwitch kind="task" onSwitch={() => onSwitch({ title: form.title, description: form.description, date: form.startDate || form.dueDate || undefined })} />}
+        {!task && onSwitch && (
+          <CreationSwitch
+            kind="task"
+            onSwitch={() =>
+              onSwitch({
+                title: form.title,
+                description: form.description,
+                date: form.startDate || form.dueDate || undefined,
+              })
+            }
+          />
+        )}
         <div className="title-field">
           <button
             type="button"
@@ -409,26 +492,28 @@ export function TaskEditor({
             <span>
               <CalendarDays size={15} /> Start date
             </span>
-            <input
-              aria-label="Start date"
+            <WeekdayDateInput
+              label="Start date"
               type="date"
               value={form.startDate || ''}
-              onChange={(e) => update('startDate', e.target.value || null)}
+              timeZone={settings.timeZone}
+              onChange={(value) => update('startDate', value || null)}
             />
           </label>
           <label>
             <span>
               <CalendarDays size={15} /> Deadline
             </span>
-            <input
-              aria-label="Deadline"
+            <WeekdayDateInput
+              label="Deadline"
               type="date"
               value={form.dueDate || ''}
-              onChange={(e) =>
+              timeZone={settings.timeZone}
+              onChange={(value) =>
                 setForm((f) => ({
                   ...f,
-                  dueDate: e.target.value || null,
-                  ...(!e.target.value ? { startDate: null, dueTime: null, recurrence: null } : {}),
+                  dueDate: value || null,
+                  ...(!value ? { startDate: null, dueTime: null, recurrence: null } : {}),
                 }))
               }
             />
@@ -553,7 +638,12 @@ export function TaskEditor({
         </div>
         <div>
           <div className="section-label">Color</div>
-          <ColorPicker inherit value={form.color} onChange={(c) => update('color', c)} />
+          <ColorPicker
+            inherit
+            custom={false}
+            value={form.color}
+            onChange={(c) => update('color', c)}
+          />
         </div>
         {task?.completedAt && (
           <p className="muted small-text">
@@ -654,7 +744,10 @@ export function EventEditor({
     event?.transparency === 'transparent' ? 'transparent' : 'opaque',
   );
   const [visibility, setVisibility] = useState<'default' | 'public' | 'private'>(
-    (event?.visibility as 'default' | 'public' | 'private') || 'default',
+    event ? (event.visibility as 'default' | 'public' | 'private') || 'default' : 'private',
+  );
+  const [colorId, setColorId] = useState<string | null>(
+    event?.colorId || DEFAULT_CALENDAR_COLOR.id,
   );
   const [meet, setMeet] = useState(false);
   const [sendUpdates, setSendUpdates] = useState<'all' | 'none'>('all');
@@ -705,6 +798,7 @@ export function EventEditor({
         attendees,
         transparency: availability,
         visibility,
+        colorId,
         ...(repeat === 'keep'
           ? {}
           : { recurrence: repeat === 'none' ? [] : [`RRULE:FREQ=${repeat}`] }),
@@ -762,7 +856,12 @@ export function EventEditor({
           void save();
         }}
       >
-        {!event && onSwitch && <CreationSwitch kind="event" onSwitch={() => onSwitch({ title, description, date: start.slice(0, 10) })} />}
+        {!event && onSwitch && (
+          <CreationSwitch
+            kind="event"
+            onSwitch={() => onSwitch({ title, description, date: start.slice(0, 10) })}
+          />
+        )}
         <fieldset disabled={readOnly} className="event-fields">
           <input
             autoFocus
@@ -792,6 +891,10 @@ export function EventEditor({
                 ))}
             </select>
           </label>
+          <div>
+            <div className="section-label">Color</div>
+            <EventColorPicker value={colorId} onChange={setColorId} />
+          </div>
           <label className="inline-label">
             <input
               type="checkbox"
@@ -808,21 +911,23 @@ export function EventEditor({
           <div className="form-grid">
             <label>
               Starts
-              <input
-                aria-label="Event start"
+              <WeekdayDateInput
+                label="Event start"
                 type={allDay ? 'date' : 'datetime-local'}
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                timeZone={settings.timeZone}
+                onChange={setStart}
                 required
               />
             </label>
             <label>
               Ends
-              <input
-                aria-label="Event end"
+              <WeekdayDateInput
+                label="Event end"
                 type={allDay ? 'date' : 'datetime-local'}
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
+                timeZone={settings.timeZone}
+                onChange={setEnd}
                 required
               />
             </label>

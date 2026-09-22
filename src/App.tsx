@@ -44,6 +44,8 @@ import { addDays, daysBetween, formatTime, isOverdue, taskOverlaps } from './sha
 import {
   backupSchema,
   defaultSettings,
+  DEFAULT_CALENDAR_COLOR,
+  GOOGLE_EVENT_COLORS,
   type CalendarEvent,
   type RangeData,
   type SessionUser,
@@ -63,7 +65,12 @@ import {
 
 type Editor =
   | { kind: 'task'; task?: Task; date?: string; draft?: { title: string; description: string } }
-  | { kind: 'event'; event?: CalendarEvent; date?: string; draft?: { title: string; description: string } }
+  | {
+      kind: 'event';
+      event?: CalendarEvent;
+      date?: string;
+      draft?: { title: string; description: string };
+    }
   | null;
 const todayString = () => DateTime.now().toISODate()!;
 const initRange = () => {
@@ -165,6 +172,10 @@ export default function App() {
   const [range, setRange] = useState(initRange);
   const [title, setTitle] = useState(DateTime.now().toFormat('MMMM yyyy'));
   const [view, setView] = useState('dayGridMonth');
+  const [expandedMonthStart, setExpandedMonthStart] = useState<string | null>(null);
+  const [currentMonthStart, setCurrentMonthStart] = useState(
+    DateTime.now().startOf('month').toISODate(),
+  );
   const [selectedDate, setSelectedDate] = useState(todayString);
   const [sidebar, setSidebar] = useState(() => window.innerWidth > 900);
   const [taskPanel, setTaskPanel] = useState(() => window.innerWidth > 1100);
@@ -175,7 +186,7 @@ export default function App() {
   );
   const [listEditor, setListEditor] = useState<Partial<TaskList> | null>(null);
   const [listName, setListName] = useState('');
-  const [listColor, setListColor] = useState<string | null>('#77946d');
+  const [listColor, setListColor] = useState<string | null>(DEFAULT_CALENDAR_COLOR.hex);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('open');
   const [taskListFilter, setTaskListFilter] = useState('');
@@ -326,7 +337,8 @@ export default function App() {
         extendedProps: {
           kind: 'task',
           task: t,
-          color: t.color || lists.find((l) => l.id === t.listId)?.color || '#77946d',
+          color:
+            t.color || lists.find((l) => l.id === t.listId)?.color || DEFAULT_CALENDAR_COLOR.hex,
         },
       })),
       ...visibleEvents.map((e) => ({
@@ -347,7 +359,10 @@ export default function App() {
         extendedProps: {
           kind: 'event',
           event: e,
-          color: calendars.find((c) => c.id === e.calendarId)?.backgroundColor || '#6b9fbe',
+          color:
+            GOOGLE_EVENT_COLORS.find((color) => color.id === e.colorId)?.hex ||
+            calendars.find((c) => c.id === e.calendarId)?.backgroundColor ||
+            DEFAULT_CALENDAR_COLOR.hex,
         },
       })),
     ],
@@ -370,6 +385,7 @@ export default function App() {
     setRange({ start: info.startStr.slice(0, 10), end: info.endStr.slice(0, 10) });
     setTitle(info.view.title);
     setSelectedDate(info.view.currentStart.toISOString().slice(0, 10));
+    setCurrentMonthStart(info.view.currentStart.toISOString().slice(0, 10));
   }
   async function toggleTask(t: Task) {
     try {
@@ -424,7 +440,7 @@ export default function App() {
   function openList(list?: TaskList) {
     setListEditor(list || {});
     setListName(list?.name || '');
-    setListColor(list?.color || '#77946d');
+    setListColor(list?.color || DEFAULT_CALENDAR_COLOR.hex);
   }
   async function exportData() {
     try {
@@ -786,7 +802,15 @@ export default function App() {
                 selectable
                 selectMirror
                 eventResizableFromStart
-                dayMaxEvents={3}
+                dayMaxEvents={
+                  expandedMonthStart !== null && expandedMonthStart === currentMonthStart ? false : 3
+                }
+                moreLinkClick={(info) => {
+                  setExpandedMonthStart(
+                    info.view.currentStart.toISOString().slice(0, 10),
+                  );
+                  return info.view.type;
+                }}
                 slotMinTime="00:00:00"
                 slotMaxTime="24:00:00"
                 scrollTime="08:00:00"
