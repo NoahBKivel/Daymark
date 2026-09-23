@@ -96,6 +96,74 @@ describe('Google event integration', () => {
       }),
     ).rejects.toMatchObject({ status: 409 });
   });
+  it('clears the old Google boundary fields when changing between all-day and timed events', async () => {
+    const google = new Google(env, 'alice');
+    vi.spyOn(google, 'writable').mockResolvedValue();
+    const allDay: CalendarEvent = {
+      id: 'event',
+      calendarId: 'cal',
+      summary: 'All-day event',
+      start: { date: '2026-09-16' },
+      end: { date: '2026-09-17' },
+      etag: 'revision-1',
+      organizer: { self: true },
+    };
+    vi.spyOn(google, 'getEvent').mockResolvedValue(allDay);
+    const request = vi.spyOn(google, 'request').mockResolvedValue(allDay);
+    const timed: EventInput = {
+      summary: 'Timed event',
+      description: '',
+      location: '',
+      start: { dateTime: '2026-09-16T10:00:00-04:00', timeZone: 'America/New_York' },
+      end: { dateTime: '2026-09-16T11:00:00-04:00', timeZone: 'America/New_York' },
+      attendees: [],
+      transparency: 'opaque',
+      visibility: 'private',
+    };
+
+    await google.editEvent({
+      calendarId: 'cal',
+      id: 'event',
+      input: timed,
+      etag: 'revision-1',
+      scope: 'one',
+      sendUpdates: 'none',
+      createMeet: false,
+      requestId: crypto.randomUUID(),
+    });
+
+    expect(request.mock.calls[0][2]).toMatchObject({
+      start: { date: null, dateTime: timed.start.dateTime },
+      end: { date: null, dateTime: timed.end.dateTime },
+    });
+
+    const timedExisting: CalendarEvent = {
+      ...allDay,
+      start: timed.start,
+      end: timed.end,
+      etag: 'revision-2',
+    };
+    vi.mocked(google.getEvent).mockResolvedValue(timedExisting);
+    await google.editEvent({
+      calendarId: 'cal',
+      id: 'event',
+      input: {
+        ...timed,
+        start: { date: '2026-09-16' },
+        end: { date: '2026-09-17' },
+      },
+      etag: 'revision-2',
+      scope: 'one',
+      sendUpdates: 'none',
+      createMeet: false,
+      requestId: crypto.randomUUID(),
+    });
+
+    expect(request.mock.calls[1][2]).toMatchObject({
+      start: { date: '2026-09-16', dateTime: null, timeZone: null },
+      end: { date: '2026-09-17', dateTime: null, timeZone: null },
+    });
+  });
   it('rejects edits to read-only calendars', async () => {
     const google = new Google(env, 'alice');
     vi.spyOn(google, 'calendars').mockResolvedValue([

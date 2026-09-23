@@ -94,6 +94,7 @@ export function CreationDialog({
     <Modal
       title={kind === 'event' ? 'Something to look forward to' : 'Make room for a task'}
       onClose={onClose}
+      wide
     >
       <EmbeddedModalContext.Provider value>{children}</EmbeddedModalContext.Provider>
     </Modal>
@@ -441,7 +442,7 @@ export function TaskEditor({
     }
   }
   return (
-    <Modal title={task ? 'Task details' : 'Make room for a task'} onClose={onClose}>
+    <Modal title={task ? 'Task details' : 'Make room for a task'} onClose={onClose} wide>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -857,6 +858,7 @@ export function EventEditor({
             : undefined
       }
       onClose={onClose}
+      wide
     >
       <form
         className="editor-form"
@@ -917,7 +919,7 @@ export function EventEditor({
             />
             All-day event
           </label>
-          <div className="form-grid">
+          <div className="form-grid event-date-grid">
             <label>
               Starts
               <WeekdayDateInput
@@ -1026,7 +1028,7 @@ export function EventEditor({
               placeholder="Anything else to know?"
             />
           </label>
-          <div className="form-grid">
+          <div className="form-grid event-availability-grid">
             <label>
               Show as
               <select

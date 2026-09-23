@@ -28,6 +28,23 @@ test('switches month creation between task and event while retaining title and d
   await expect(dialog.getByLabel('Deadline', { exact: true })).toHaveValue(date);
 });
 
+test('fits task and event creation forms in the desktop dialog without scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByRole('button', { name: 'Task', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(() => dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1))
+    .toBe(true);
+
+  await dialog.getByRole('button', { name: 'Event', exact: true }).click();
+  await expect(dialog.getByLabel('Event title')).toBeVisible();
+  await expect
+    .poll(() => dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1))
+    .toBe(true);
+});
+
 test('renders a working public calendar with timed events and opens a day timeline', async ({
   page,
 }) => {

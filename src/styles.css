@@ -1105,7 +1105,7 @@ a {
   animation: appear 0.15s ease-out;
 }
 .modal-wide {
-  width: min(690px, calc(100vw - 32px));
+  width: min(1040px, calc(100vw - 32px));
 }
 .modal-heading {
   display: flex;
@@ -1129,6 +1129,43 @@ a {
   display: flex;
   flex-direction: column;
   gap: 17px;
+}
+@media (min-width: 901px) {
+  .modal-wide {
+    padding: 22px 25px;
+  }
+  .modal-wide .modal-heading {
+    margin-bottom: 16px;
+  }
+  .modal-wide .editor-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 22px;
+    align-items: start;
+  }
+  .modal-wide .editor-form > .creation-switch,
+  .modal-wide .editor-form > .title-field,
+  .modal-wide .editor-form > .event-fields,
+  .modal-wide .editor-form > .form-error,
+  .modal-wide .editor-form > .modal-footer,
+  .modal-wide .editor-form > .confirm-row {
+    grid-column: 1 / -1;
+  }
+  .modal-wide .event-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 22px;
+    align-items: start;
+  }
+  .modal-wide .event-fields > .event-title-input {
+    grid-column: 1 / -1;
+  }
+  .modal-wide .event-date-grid {
+    grid-column: span 2;
+  }
+  .modal-wide textarea {
+    min-height: 68px;
+  }
 }
 label {
   display: flex;

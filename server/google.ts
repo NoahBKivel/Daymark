@@ -166,6 +166,16 @@ export class Google {
     }
     const body: Record<string, unknown> = { ...input };
     if (current) {
+      const wasAllDay = !!current.start.date;
+      const isAllDay = !!input.start.date;
+      if (wasAllDay !== isAllDay) {
+        body.start = isAllDay
+          ? { ...input.start, dateTime: null, timeZone: null }
+          : { ...input.start, date: null };
+        body.end = isAllDay
+          ? { ...input.end, dateTime: null, timeZone: null }
+          : { ...input.end, date: null };
+      }
       body.attendees = input.attendees.map((a) => ({
         ...current!.attendees?.find((old) => old.email.toLowerCase() === a.email.toLowerCase()),
         ...a,
