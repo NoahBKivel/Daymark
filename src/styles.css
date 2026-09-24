@@ -768,6 +768,11 @@ a {
   background: var(--soft);
   border-left-color: var(--line-strong);
 }
+.calendar-event.past .event-card {
+  opacity: 0.57;
+  background: var(--soft);
+  border-left-color: var(--line-strong);
+}
 .calendar-task.completed .event-card-title > span {
   text-decoration: line-through;
   text-decoration-color: var(--muted);

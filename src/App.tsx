@@ -40,7 +40,14 @@ import {
 import { DateTime } from 'luxon';
 import { makeClient, request } from './api';
 import { demoState, resetDemo } from './demo';
-import { addDays, daysBetween, formatTime, isOverdue, taskOverlaps } from './shared/dates';
+import {
+  addDays,
+  daysBetween,
+  formatTime,
+  isOverdue,
+  isPastEvent,
+  taskOverlaps,
+} from './shared/dates';
 import {
   backupSchema,
   defaultSettings,
@@ -181,6 +188,7 @@ export default function App() {
     DateTime.now().startOf('month').toISODate(),
   );
   const [selectedDate, setSelectedDate] = useState(todayString);
+  const [now, setNow] = useState(DateTime.now);
   const [sidebar, setSidebar] = useState(() => window.innerWidth > 900);
   const [taskPanel, setTaskPanel] = useState(() => window.innerWidth > 1100);
   const [editor, setEditor] = useState<Editor>(null);
@@ -197,6 +205,10 @@ export default function App() {
   const monthDayIsExpanded =
     expandedMonthDay !== null && expandedMonthDay.monthStart === currentMonthStart;
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(DateTime.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => {
     if (!monthDayIsExpanded || !expandedMonthDay) return;
 
@@ -440,7 +452,7 @@ export default function App() {
           (!e.organizer || e.organizer.self || e.guestsCanModify),
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        classNames: ['calendar-event'],
+        classNames: ['calendar-event', ...(isPastEvent(e, now, settings.timeZone) ? ['past'] : [])],
         extendedProps: {
           kind: 'event',
           event: e,
@@ -451,7 +463,7 @@ export default function App() {
         },
       })),
     ],
-    [visibleTasks, visibleEvents, lists, calendars],
+    [visibleTasks, visibleEvents, lists, calendars, now, settings.timeZone],
   );
   function goTo(date: string, day = false) {
     const api = calendarRef.current?.getApi();
@@ -976,7 +988,7 @@ export default function App() {
                     setToast((e as Error).message);
                   }
                 }}
-                />
+              />
             </div>
             <footer className="calendar-footer">
               {!demo && (

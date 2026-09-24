@@ -24,6 +24,16 @@ export function isOverdue(t: Task, now: DateTime = DateTime.now()): boolean {
     : DateTime.fromISO(t.dueDate, { zone: t.timeZone }).plus({ days: 1 });
   return now.toMillis() >= deadline.toMillis();
 }
+export function isPastEvent(
+  event: CalendarEvent,
+  now: DateTime = DateTime.now(),
+  displayTimeZone = 'local',
+): boolean {
+  if (event.end.dateTime) return now.toMillis() >= DateTime.fromISO(event.end.dateTime).toMillis();
+  if (!event.end.date) return false;
+  const zone = event.end.timeZone || event.start.timeZone || displayTimeZone;
+  return now.toMillis() >= DateTime.fromISO(event.end.date, { zone }).toMillis();
+}
 const frequencies = {
   daily: RRule.DAILY,
   weekly: RRule.WEEKLY,

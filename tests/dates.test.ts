@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DateTime } from 'luxon';
-import { addDays, expandTasks, isOverdue, taskOverlaps } from '../src/shared/dates';
-import { taskInputSchema } from '../src/shared/model';
+import { addDays, expandTasks, isOverdue, isPastEvent, taskOverlaps } from '../src/shared/dates';
+import { taskInputSchema, type CalendarEvent } from '../src/shared/model';
 import { task } from './fixtures';
 describe('calendar date boundaries', () => {
   it('includes ranges which cross or entirely span the visible month', () => {
@@ -39,6 +39,31 @@ describe('calendar date boundaries', () => {
     expect(isOverdue(timed, DateTime.fromISO('2026-11-01T13:59:59Z'))).toBe(false);
     expect(isOverdue(timed, DateTime.fromISO('2026-11-01T14:00:00Z'))).toBe(true);
     expect(isOverdue({ ...timed, completed: true }, DateTime.fromISO('2027-01-01'))).toBe(false);
+  });
+  it('marks timed and all-day events as past at their exclusive end boundary', () => {
+    const timed: CalendarEvent = {
+      id: 'timed',
+      calendarId: 'calendar',
+      summary: 'Timed event',
+      start: { dateTime: '2026-09-23T10:00:00-04:00' },
+      end: { dateTime: '2026-09-23T11:00:00-04:00' },
+    };
+    expect(isPastEvent(timed, DateTime.fromISO('2026-09-23T14:59:59Z'))).toBe(false);
+    expect(isPastEvent(timed, DateTime.fromISO('2026-09-23T15:00:00Z'))).toBe(true);
+
+    const allDay: CalendarEvent = {
+      ...timed,
+      id: 'all-day',
+      summary: 'All-day event',
+      start: { date: '2026-09-23' },
+      end: { date: '2026-09-24' },
+    };
+    expect(isPastEvent(allDay, DateTime.fromISO('2026-09-24T03:59:59Z'), 'America/New_York')).toBe(
+      false,
+    );
+    expect(isPastEvent(allDay, DateTime.fromISO('2026-09-24T04:00:00Z'), 'America/New_York')).toBe(
+      true,
+    );
   });
   it('validates actual dates, deadline ordering, and optional time requirements', () => {
     expect(taskInputSchema.safeParse(task({ dueDate: '2026-02-30' })).success).toBe(false);
