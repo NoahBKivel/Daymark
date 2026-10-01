@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import { expandableMonthPlugin } from './expandable-month';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import luxonPlugin from '@fullcalendar/luxon3';
@@ -886,7 +887,13 @@ export default function App() {
             <div className={`calendar-container ${rangeQuery.isFetching ? 'is-fetching' : ''}`}>
               <FullCalendar
                 ref={calendarRef}
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
+                plugins={[
+                  dayGridPlugin,
+                  expandableMonthPlugin,
+                  timeGridPlugin,
+                  interactionPlugin,
+                  luxonPlugin,
+                ]}
                 initialView={view}
                 initialDate={currentMonthStart}
                 headerToolbar={false}
@@ -900,7 +907,8 @@ export default function App() {
                 selectable
                 selectMirror
                 eventResizableFromStart
-                dayMaxEvents={monthDayIsExpanded ? false : 3}
+                dayMaxEvents={3}
+                expandedWeekDate={monthDayIsExpanded ? expandedMonthDay!.date : ''}
                 moreLinkContent={(info) => `Show + ${info.num} more`}
                 moreLinkClick={(info) => {
                   document

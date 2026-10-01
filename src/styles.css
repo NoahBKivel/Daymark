@@ -501,7 +501,7 @@ a {
   background: var(--bg);
 }
 .calendar-toolbar {
-  height: 104px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1646,9 +1646,6 @@ input[type='checkbox'] {
   .event-card-time {
     font-size: 11px;
   }
-  .calendar-toolbar {
-    height: 112px;
-  }
   .panel-task-title {
     font-size: 13px;
   }
@@ -1765,7 +1762,7 @@ input[type='checkbox'] {
     gap: 11px;
   }
   .calendar-toolbar {
-    height: 93px;
+    height: 72px;
     padding: 0 21px;
   }
   .calendar-title-group h1 {
@@ -1834,8 +1831,8 @@ input[type='checkbox'] {
   }
   .calendar-toolbar {
     height: auto;
-    min-height: 115px;
-    padding: 15px 13px 12px;
+    min-height: 96px;
+    padding: 10px 13px;
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 9px;
