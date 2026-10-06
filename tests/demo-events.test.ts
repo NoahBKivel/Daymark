@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
-import { deleteDemoEvent, demoEventRange, saveDemoEvent } from '../src/demo-events';
+import { colorDemoEvent, deleteDemoEvent, demoEventRange, saveDemoEvent } from '../src/demo-events';
 import { eventInputSchema, type CalendarEvent } from '../src/shared/model';
 
 const series = (): CalendarEvent => ({
@@ -69,4 +69,21 @@ it('moves a demo series and its edited exceptions together', () => {
   const moved = saveDemoEvent(edited.rows, input, 'university', occurrence.id, 'all');
   expect(range(moved.rows)).toHaveLength(4);
   expect(range(moved.rows).every((event) => event.calendarId === 'university')).toBe(true);
+});
+
+it('changes an invitation occurrence color without replacing its organizer or details', () => {
+  const master = { ...series(), organizer: { self: false, email: 'organization@example.com' } };
+  const selected = range([master])[1];
+  const rows = colorDemoEvent([master], selected, '9');
+  const updated = range(rows);
+  expect(updated).toHaveLength(4);
+  expect(updated.find((event) => event.id === selected.id)).toMatchObject({
+    organizer: master.organizer,
+    summary: master.summary,
+    colorId: '9',
+    recurringEventId: master.id,
+    start: selected.start,
+    end: selected.end,
+  });
+  expect(updated.filter((event) => event.colorId === '9')).toHaveLength(1);
 });

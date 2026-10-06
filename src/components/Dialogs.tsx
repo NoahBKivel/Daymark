@@ -775,10 +775,18 @@ export function EventEditor({
     (!['owner', 'writer'].includes(cal?.accessRole || '') ||
       (!!event.eventType && event.eventType !== 'default') ||
       (!!event.organizer && !event.organizer.self && !event.guestsCanModify));
+  const canChangeColor = !!event && ['owner', 'writer'].includes(cal?.accessRole || '');
   async function save() {
     setBusy(true);
     setError('');
     try {
+      if (readOnly) {
+        if (!event || !canChangeColor) return;
+        await client.setEventColor(event, colorId);
+        onSaved('Event color updated');
+        onClose();
+        return;
+      }
       const self = event?.attendees?.filter((a) => a.self).map((a) => ({ email: a.email })) || [];
       const attendees = [
         ...self,
@@ -906,10 +914,12 @@ export function EventEditor({
                 ))}
             </select>
           </label>
-          <div>
-            <div className="section-label">Color</div>
-            <EventColorPicker value={colorId} onChange={setColorId} />
-          </div>
+          {!readOnly && (
+            <div>
+              <div className="section-label">Color</div>
+              <EventColorPicker value={colorId} onChange={setColorId} />
+            </div>
+          )}
           <label className="inline-label">
             <input
               type="checkbox"
@@ -1084,6 +1094,12 @@ export function EventEditor({
             </label>
           )}
         </fieldset>
+        {readOnly && canChangeColor && (
+          <fieldset disabled={busy} className="event-fields">
+            <div className="section-label">Color</div>
+            <EventColorPicker value={colorId} onChange={setColorId} />
+          </fieldset>
+        )}
         {event?.attendees?.some((a) => a.self) && (
           <div className="rsvp">
             <span>Going?</span>
@@ -1136,9 +1152,9 @@ export function EventEditor({
             <button type="button" className="button secondary" onClick={onClose}>
               {readOnly ? 'Close' : 'Cancel'}
             </button>
-            {!readOnly && (
+            {(!readOnly || canChangeColor) && (
               <button className="button primary" disabled={busy}>
-                {busy ? 'Saving…' : 'Save event'}
+                {busy ? 'Saving…' : readOnly ? 'Save color' : 'Save event'}
               </button>
             )}
           </div>

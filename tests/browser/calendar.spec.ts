@@ -248,3 +248,42 @@ test('desktop and mobile visual smoke tests have no horizontal page overflow', a
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
 });
+
+test('saves an externally organized event color while keeping its details locked', async ({
+  page,
+}) => {
+  await expect(
+    page.locator('.fc-event').filter({ hasText: 'Coffee with Jenna' }).first(),
+  ).toBeAttached();
+  await page.evaluate(() => {
+    const key = 'daymark.demo.v1';
+    const state = JSON.parse(localStorage.getItem(key)!);
+    state.tasks = [];
+    state.events = [state.events[0]];
+    state.events[0].organizer = { self: false, email: 'organization@example.com' };
+    state.events[0].guestsCanModify = false;
+    localStorage.setItem(key, JSON.stringify(state));
+  });
+  await page.reload();
+  await page.locator('.fc-event:visible').filter({ hasText: 'Coffee with Jenna' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Event title')).toBeDisabled();
+  await expect(dialog.getByLabel('Event start')).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Event color Blueberry', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save color', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('daymark.demo.v1')!).events.find(
+      (event: { id: string }) => event.id === 'demo-jenna',
+    ),
+  );
+  expect(saved.colorId).toBe('9');
+  expect(saved.summary).toBe('Coffee with Jenna');
+  expect(saved.organizer).toEqual({ self: false, email: 'organization@example.com' });
+  await page.reload();
+  await page.locator('.fc-event:visible').filter({ hasText: 'Coffee with Jenna' }).first().click();
+  await expect(
+    page.getByRole('dialog').getByRole('button', { name: 'Event color Blueberry', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});

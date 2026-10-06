@@ -227,6 +227,26 @@ app.delete('/api/events/:calendar/:id', async (c) => {
   );
   return c.json({ ok: true });
 });
+app.patch('/api/events/:calendar/:id/color', async (c) => {
+  const body = z
+    .object({
+      colorId: z
+        .string()
+        .regex(/^(?:[1-9]|10|11)$/)
+        .nullable(),
+      etag: z.string().optional(),
+    })
+    .strict()
+    .parse(await c.req.json());
+  return c.json(
+    await new Google(c.env, c.get('user').id).setEventColor(
+      c.req.param('calendar'),
+      c.req.param('id'),
+      body.colorId,
+      body.etag,
+    ),
+  );
+});
 app.post('/api/events/:calendar/:id/rsvp', async (c) => {
   const input = z
     .object({ status: z.enum(['accepted', 'declined', 'tentative']), etag: z.string().optional() })

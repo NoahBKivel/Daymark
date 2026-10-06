@@ -10,6 +10,45 @@ import type { CalendarEvent, EventInput } from '../src/shared/model';
 describe('Google event integration', () => {
   const env = {} as Env;
   afterEach(() => vi.restoreAllMocks());
+  it('changes only the color of an externally organized invitation without notifying guests', async () => {
+    const google = new Google(env, 'alice');
+    const writable = vi.spyOn(google, 'writable').mockResolvedValue();
+    const event: CalendarEvent = {
+      id: 'invitation',
+      calendarId: 'personal',
+      summary: 'Organization meeting',
+      start: { date: '2026-10-06' },
+      end: { date: '2026-10-07' },
+      organizer: { self: false, email: 'organizer@example.com' },
+      guestsCanModify: false,
+      etag: 'revision-1',
+    };
+    vi.spyOn(google, 'getEvent').mockResolvedValue(event);
+    const request = vi.spyOn(google, 'request').mockResolvedValue({ ...event, colorId: '9' });
+    expect(await google.setEventColor('personal', 'invitation', '9', 'revision-1')).toMatchObject({
+      calendarId: 'personal',
+      colorId: '9',
+    });
+    expect(writable).toHaveBeenCalledWith('personal');
+    expect(request).toHaveBeenCalledWith(
+      '/calendar/v3/calendars/personal/events/invitation?sendUpdates=none',
+      'PATCH',
+      { colorId: '9' },
+      'revision-1',
+    );
+    await google.setEventColor('personal', 'invitation', null, 'revision-1');
+    expect(request.mock.calls[1][2]).toEqual({ colorId: null });
+    request.mockClear();
+    await expect(
+      google.setEventColor('personal', 'invitation', '9', 'stale'),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(request).not.toHaveBeenCalled();
+    writable.mockRejectedValue(new Error('read-only calendar'));
+    await expect(google.setEventColor('personal', 'invitation', '9')).rejects.toThrow(
+      'read-only calendar',
+    );
+    expect(request).not.toHaveBeenCalled();
+  });
   it('updates the source event before moving it to a writable destination', async () => {
     const google = new Google(env, 'alice');
     const writable = vi.spyOn(google, 'writable').mockResolvedValue();

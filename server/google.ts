@@ -378,6 +378,23 @@ export class Google {
       e.etag,
     );
   }
+  async setEventColor(calendarId: string, id: string, colorId: string | null, etag?: string) {
+    await this.writable(calendarId);
+    const event = await this.getEvent(calendarId, id);
+    if (etag && etag !== event.etag)
+      throw new HTTPException(409, {
+        message: 'This event changed elsewhere. Reload it before saving.',
+      });
+    return {
+      ...(await this.request<CalendarEvent>(
+        `${this.eventPath(calendarId, id)}?sendUpdates=none`,
+        'PATCH',
+        { colorId },
+        event.etag,
+      )),
+      calendarId,
+    };
+  }
   async rsvp(
     calendarId: string,
     id: string,

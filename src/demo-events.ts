@@ -157,3 +157,14 @@ export function deleteDemoEvent(rows: CalendarEvent[], event: CalendarEvent, sco
   }
   return [...rows.filter((e) => e.id !== event.id), { ...event, status: 'cancelled' }];
 }
+
+export function colorDemoEvent(
+  rows: CalendarEvent[],
+  selected: CalendarEvent,
+  colorId: string | null,
+) {
+  const current = resolve(rows, selected.id);
+  if (!current) throw new Error('This event no longer exists.');
+  const updated = { ...current, colorId, etag: crypto.randomUUID() };
+  return [...rows.filter((event) => event.id !== selected.id), updated];
+}
