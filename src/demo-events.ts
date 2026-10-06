@@ -84,6 +84,13 @@ export function saveDemoEvent(
   scope: string,
 ) {
   const prior = resolve(rows, id);
+  if (
+    prior &&
+    prior.calendarId !== calendarId &&
+    (prior.recurringEventId || prior.recurrence?.length) &&
+    scope !== 'all'
+  )
+    throw new Error('Choose all events in the series to change calendars.');
   let target = prior;
   let fields = { ...input };
   let savedId = id;
@@ -135,7 +142,10 @@ export function saveDemoEvent(
     status: 'confirmed',
     ...(savedId !== prior?.id ? { recurringEventId: undefined, originalStartTime: undefined } : {}),
   };
-  return { rows: [...rows.filter((e) => e.id !== savedId), event], event };
+  const remaining = rows
+    .filter((e) => e.id !== savedId)
+    .map((e) => (scope === 'all' && e.recurringEventId === savedId ? { ...e, calendarId } : e));
+  return { rows: [...remaining, event], event };
 }
 export function deleteDemoEvent(rows: CalendarEvent[], event: CalendarEvent, scope: string) {
   if (event.recurringEventId && scope !== 'one') {

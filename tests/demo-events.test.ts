@@ -60,3 +60,13 @@ describe('browser-only recurring events', () => {
     expect(range(deleteDemoEvent([series()], events[2], 'all'))).toHaveLength(0);
   });
 });
+
+it('moves a demo series and its edited exceptions together', () => {
+  const master = series();
+  const occurrence = range([master])[1];
+  const input = eventInputSchema.parse({ ...occurrence, summary: 'Exception' });
+  const edited = saveDemoEvent([master], input, 'personal', occurrence.id, 'one');
+  const moved = saveDemoEvent(edited.rows, input, 'university', occurrence.id, 'all');
+  expect(range(moved.rows)).toHaveLength(4);
+  expect(range(moved.rows).every((event) => event.calendarId === 'university')).toBe(true);
+});

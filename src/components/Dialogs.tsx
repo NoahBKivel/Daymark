@@ -768,7 +768,8 @@ export function EventEditor({
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [requestId] = useState(() => crypto.randomUUID());
-  const cal = calendars.find((c) => c.id === calendarId);
+  const movingCalendar = !!event && calendarId !== event.calendarId;
+  const cal = calendars.find((c) => c.id === (event?.calendarId || calendarId));
   const readOnly =
     !!event &&
     (!['owner', 'writer'].includes(cal?.accessRole || '') ||
@@ -888,8 +889,11 @@ export function EventEditor({
             <select
               aria-label="Event calendar"
               value={calendarId}
-              disabled={!!event}
-              onChange={(e) => setCalendarId(e.target.value)}
+              disabled={busy || (!!event?.organizer && !event.organizer.self)}
+              onChange={(e) => {
+                setCalendarId(e.target.value);
+                if (event?.recurringEventId || event?.recurrence) setScope('all');
+              }}
             >
               {calendars
                 .filter(
@@ -969,6 +973,7 @@ export function EventEditor({
               Apply changes to
               <select
                 aria-label="Event edit scope"
+                disabled={movingCalendar}
                 value={scope}
                 onChange={(e) => setScope(e.target.value as EditScope)}
               >
@@ -976,6 +981,7 @@ export function EventEditor({
                 <option value="following">This and following events</option>
                 <option value="all">All events in the series</option>
               </select>
+              {movingCalendar && <small>Changing calendars moves the entire series.</small>}
               {scope === 'following' && (
                 <small>Following-event edits reset future exceptions, as in Google Calendar.</small>
               )}

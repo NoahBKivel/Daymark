@@ -120,6 +120,7 @@ export class Google {
   }
   async editEvent(args: {
     calendarId: string;
+    destinationCalendarId?: string;
     id?: string;
     input: EventInput;
     etag?: string;
@@ -141,6 +142,17 @@ export class Google {
       throw new HTTPException(403, {
         message: 'Only the organizer can edit this event. You can update your RSVP.',
       });
+    const destination = args.destinationCalendarId || calendarId;
+    const moving = !!current && destination !== calendarId;
+    if (moving) {
+      await this.writable(destination);
+      if (current!.organizer && !current!.organizer.self)
+        throw new HTTPException(403, { message: 'Only the organizer can move this event.' });
+      if ((current!.recurringEventId || current!.recurrence?.length) && scope !== 'all')
+        throw new HTTPException(400, {
+          message: 'Choose all events in the series to change calendars.',
+        });
+    }
     if (current?.recurringEventId && scope === 'following')
       return this.splitEvent(current, input, sendUpdates, createMeet, args.requestId);
     if (current?.recurringEventId && scope === 'all') {
@@ -190,16 +202,34 @@ export class Google {
         },
       };
     const query = new URLSearchParams({ sendUpdates, conferenceDataVersion: '1' });
-    if (current)
-      return {
-        ...(await this.request<CalendarEvent>(
-          `${this.eventPath(calendarId, current.id)}?${query}`,
-          'PATCH',
-          body,
-          current.etag,
-        )),
-        calendarId,
-      };
+    if (current) {
+      const updated = await this.request<CalendarEvent>(
+        `${this.eventPath(calendarId, current.id)}?${query}`,
+        'PATCH',
+        body,
+        current.etag,
+      );
+      if (moving) {
+        const moveQuery = new URLSearchParams({ destination, sendUpdates });
+        try {
+          return {
+            ...(await this.request<CalendarEvent>(
+              `${this.eventPath(calendarId, updated.id)}/move?${moveQuery}`,
+              'POST',
+              undefined,
+              updated.etag,
+            )),
+            calendarId: destination,
+          };
+        } catch {
+          throw new HTTPException(409, {
+            message:
+              'Event changes were saved, but the calendar move failed. Reload the event before trying again.',
+          });
+        }
+      }
+      return { ...updated, calendarId };
+    }
     body.id = args.requestId.replaceAll('-', '');
     try {
       return {

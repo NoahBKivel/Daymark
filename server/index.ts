@@ -180,6 +180,7 @@ app.delete('/api/tasks/:id', async (c) => {
   return c.json({ ok: true });
 });
 const eventMutationSchema = z.object({
+  destinationCalendarId: z.string().min(1).optional(),
   input: eventInputSchema,
   etag: z.string().optional(),
   scope: z.enum(['one', 'following', 'all']).default('one'),

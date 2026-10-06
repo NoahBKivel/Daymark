@@ -100,9 +100,17 @@ export function makeClient(demo: boolean) {
       demo
         ? demoSaveEvent(input, calendarId, existing?.id, scope)
         : request<CalendarEvent>(
-            `/events/${encodeURIComponent(calendarId)}${existing ? `/${encodeURIComponent(existing.id)}` : ''}`,
+            `/events/${encodeURIComponent(existing?.calendarId || calendarId)}${existing ? `/${encodeURIComponent(existing.id)}` : ''}`,
             existing ? 'PUT' : 'POST',
-            { input, etag: existing?.etag, scope, sendUpdates, createMeet, requestId },
+            {
+              input,
+              etag: existing?.etag,
+              scope,
+              sendUpdates,
+              createMeet,
+              requestId,
+              destinationCalendarId: calendarId,
+            },
           ),
     deleteEvent: async (event: CalendarEvent, scope: EditScope, sendUpdates: 'all' | 'none') => {
       if (!demo)

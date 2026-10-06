@@ -10,6 +10,66 @@ import type { CalendarEvent, EventInput } from '../src/shared/model';
 describe('Google event integration', () => {
   const env = {} as Env;
   afterEach(() => vi.restoreAllMocks());
+  it('updates the source event before moving it to a writable destination', async () => {
+    const google = new Google(env, 'alice');
+    const writable = vi.spyOn(google, 'writable').mockResolvedValue();
+    const existing: CalendarEvent = {
+      id: 'event',
+      calendarId: 'source',
+      summary: 'Meeting',
+      start: { date: '2026-09-30' },
+      end: { date: '2026-10-01' },
+      organizer: { self: true },
+      etag: 'old',
+    };
+    vi.spyOn(google, 'getEvent').mockResolvedValue(existing);
+    const request = vi
+      .spyOn(google, 'request')
+      .mockResolvedValueOnce({ ...existing, etag: 'updated' })
+      .mockResolvedValueOnce({ ...existing, etag: 'moved' });
+    const args = {
+      calendarId: 'source',
+      destinationCalendarId: 'destination',
+      id: 'event',
+      input: {
+        summary: 'Meeting',
+        description: '',
+        location: '',
+        start: existing.start,
+        end: existing.end,
+        attendees: [],
+        transparency: 'opaque',
+        visibility: 'default',
+      } as EventInput,
+      etag: 'old',
+      scope: 'one' as const,
+      sendUpdates: 'all' as const,
+      createMeet: false,
+      requestId: crypto.randomUUID(),
+    };
+    const saved = await google.editEvent(args);
+    expect(writable.mock.calls).toEqual([['source'], ['destination']]);
+    expect(request.mock.calls[0][0]).toContain('/calendars/source/events/event?');
+    expect(request.mock.calls[0][1]).toBe('PATCH');
+    expect(request.mock.calls[1]).toEqual([
+      '/calendar/v3/calendars/source/events/event/move?destination=destination&sendUpdates=all',
+      'POST',
+      undefined,
+      'updated',
+    ]);
+    expect(saved.calendarId).toBe('destination');
+    request.mockClear();
+    vi.spyOn(google, 'getEvent').mockResolvedValue({ ...existing, recurringEventId: 'series' });
+    await expect(google.editEvent(args)).rejects.toMatchObject({ status: 400 });
+    expect(request).not.toHaveBeenCalled();
+    vi.spyOn(google, 'getEvent').mockResolvedValue({
+      ...existing,
+      organizer: { self: false },
+      guestsCanModify: true,
+    });
+    await expect(google.editEvent(args)).rejects.toMatchObject({ status: 403 });
+    expect(request).not.toHaveBeenCalled();
+  });
   it('follows every page of visible events and preserves calendar identity', async () => {
     const google = new Google(env, 'alice');
     vi.spyOn(google, 'accessToken').mockResolvedValue('test-token');

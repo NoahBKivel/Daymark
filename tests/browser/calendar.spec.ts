@@ -7,8 +7,14 @@ test.beforeEach(async ({ page }) => {
   );
   await page.goto('/?demo=1');
 });
-test('switches month creation between task and event while retaining title and date', async ({ page }) => {
-  await page.locator('.fc-daygrid-day').last().locator('.fc-daygrid-day-frame').click({ position: { x: 12, y: 45 } });
+test('switches month creation between task and event while retaining title and date', async ({
+  page,
+}) => {
+  await page
+    .locator('.fc-daygrid-day')
+    .last()
+    .locator('.fc-daygrid-day-frame')
+    .click({ position: { x: 12, y: 45 } });
   const dialog = page.getByRole('dialog');
   const initialDialog = await dialog.elementHandle();
   await dialog.getByLabel('Task title', { exact: true }).fill('Switchable item');
@@ -22,13 +28,18 @@ test('switches month creation between task and event while retaining title and d
   await expect(dialog.getByLabel('Event title')).toHaveValue('Switchable item');
   await expect(dialog.getByLabel('Event start')).toHaveValue(new RegExp(`^${date}`));
   await expect(dialog.getByLabel('Event start').locator('..')).toContainText(weekday);
-  await expect(dialog.getByRole('button', { name: 'Event', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.getByRole('button', { name: 'Event', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await dialog.getByRole('button', { name: 'Task', exact: true }).click();
   await expect(dialog.getByLabel('Task title', { exact: true })).toHaveValue('Switchable item');
   await expect(dialog.getByLabel('Deadline', { exact: true })).toHaveValue(date);
 });
 
-test('fits task and event creation forms in the desktop dialog without scrolling', async ({ page }) => {
+test('fits task and event creation forms in the desktop dialog without scrolling', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await page.getByRole('button', { name: 'Task', exact: true }).click();
@@ -68,23 +79,34 @@ test('renders a working public calendar with timed events and opens a day timeli
 test('expands a crowded month row instead of opening the more popover', async ({ page }) => {
   const todayCell = page.locator('.fc-day-today');
   const date = (await todayCell.getAttribute('data-date'))!;
-  await page.evaluate((dueDate) => {
-    const key = 'daymark.demo.v1';
-    const state = JSON.parse(localStorage.getItem(key)!);
-    const template = state.tasks[0];
-    state.tasks.push(
-      ...Array.from({ length: 8 }, (_, index) => ({
-        ...template,
-        id: 'overflow-' + index,
-        title: 'Overflow task ' + (index + 1),
-        startDate: dueDate,
-        dueDate,
-        checklist: [],
-        recurrence: null,
-      })),
-    );
-    localStorage.setItem(key, JSON.stringify(state));
-  }, date);
+  const sameWeekDate = DateTime.fromISO(date)
+    .plus({ days: DateTime.fromISO(date).weekday % 7 === 6 ? -1 : 1 })
+    .toISODate()!;
+  const otherWeekDate = DateTime.fromISO(date)
+    .plus({ days: DateTime.fromISO(date).day > 21 ? -7 : 7 })
+    .toISODate()!;
+  await page.evaluate(
+    ({ dueDate, sameWeekDate, otherWeekDate }) => {
+      const key = 'daymark.demo.v1';
+      const state = JSON.parse(localStorage.getItem(key)!);
+      const template = state.tasks[0];
+      state.tasks.push(
+        ...[dueDate, sameWeekDate, otherWeekDate].flatMap((taskDate) =>
+          Array.from({ length: 8 }, (_, index) => ({
+            ...template,
+            id: 'overflow-' + taskDate + '-' + index,
+            title: 'Overflow task ' + (index + 1),
+            startDate: taskDate,
+            dueDate: taskDate,
+            checklist: [],
+            recurrence: null,
+          })),
+        ),
+      );
+      localStorage.setItem(key, JSON.stringify(state));
+    },
+    { dueDate: date, sameWeekDate, otherWeekDate },
+  );
   await page.reload();
 
   const moreLink = page
@@ -95,9 +117,14 @@ test('expands a crowded month row instead of opening the more popover', async ({
   const heightBefore = await moreLink.evaluate(
     (element) => element.closest('tr')!.getBoundingClientRect().height,
   );
+  const otherWeekMore = page.locator(`[data-date="${otherWeekDate}"] .fc-daygrid-more-link`);
+  await expect(otherWeekMore).toBeVisible();
   await moreLink.click();
+  await expect(otherWeekMore).toBeVisible();
 
   await expect(moreLink).toHaveCount(0);
+  await expect(page.locator(`[data-date="${sameWeekDate}"] .fc-daygrid-more-link`)).toHaveCount(0);
+  await expect(page.locator(`[data-date="${sameWeekDate}"]`)).toContainText('Overflow task 8');
   await expect(page.locator('.fc-popover')).toHaveCount(0);
   const expandedCell = page.locator('[data-date="' + date + '"]');
   await expect(expandedCell).toContainText('Overflow task 8');
@@ -192,9 +219,9 @@ test('supports custom list colors, dark mode, keyboard dialog dismissal, and an 
   await expect(appointment).toBeVisible();
   await expect
     .poll(() =>
-      appointment.locator('.event-card').evaluate((element) =>
-        getComputedStyle(element).getPropertyValue('--event-color').trim(),
-      ),
+      appointment
+        .locator('.event-card')
+        .evaluate((element) => getComputedStyle(element).getPropertyValue('--event-color').trim()),
     )
     .toBe('#33b679');
 });
