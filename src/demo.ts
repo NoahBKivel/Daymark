@@ -37,8 +37,7 @@ export const demoCalendars: CalendarInfo[] = [
   },
   { id: 'university', summary: 'University', backgroundColor: '#bc92cd', accessRole: 'reader' },
 ];
-export function seedDemo(): DemoState {
-  const now = DateTime.now();
+export function seedDemo(now: DateTime = DateTime.now()): DemoState {
   const month = now.startOf('month');
   const day = (d: number) => month.plus({ days: d - 1 }).toISODate()!;
   const today = now.toISODate()!;
@@ -203,10 +202,28 @@ export function seedDemo(): DemoState {
     ],
   };
 }
+export function refreshUntouchedDemo(state: DemoState, now: DateTime = DateTime.now()): DemoState {
+  const sample = state.tasks.find((task) => task.id === 'demo-presentation');
+  if (!sample) return state;
+  const seededAt = DateTime.fromISO(sample.createdAt).setZone(sample.timeZone);
+  if (!seededAt.isValid || seededAt.hasSame(now, 'month')) return state;
+  const original = seedDemo(seededAt);
+  const unchanged = (['tasks', 'events', 'lists'] as const).every(
+    (key) => JSON.stringify(state[key]) === JSON.stringify(original[key]),
+  );
+  return unchanged ? { ...seedDemo(now), settings: state.settings } : state;
+}
+
 export function readDemo(): DemoState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const stored = JSON.parse(raw) as DemoState;
+      const state = refreshUntouchedDemo(stored);
+      if (state !== stored) writeDemo(state);
+      memory = state;
+      return state;
+    }
   } catch {
     /* A disabled/full browser store should not prevent the demo. */
   }

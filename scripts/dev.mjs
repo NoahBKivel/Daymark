@@ -30,8 +30,8 @@ if (!version || !compatible(version)) {
 if (runtime !== process.execPath) console.log(`Using Node ${version}: ${runtime}`);
 
 const children = new Set();
-const frontendPort = Number(process.env.CALENDAR_DEV_PORT || 5173);
-if (!Number.isInteger(frontendPort) || frontendPort < 1024 || frontendPort > 65535) {
+const preferredFrontendPort = Number(process.env.CALENDAR_DEV_PORT || 5173);
+if (!Number.isInteger(preferredFrontendPort) || preferredFrontendPort < 1024 || preferredFrontendPort > 65535) {
   throw new Error('CALENDAR_DEV_PORT must be a port from 1024 to 65535.');
 }
 let stopping = false;
@@ -56,11 +56,11 @@ function stop(code = 0) {
 }
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());
-function run(script, args, persistent = false) {
+function run(script, args, persistent = false, extraEnv = {}) {
   const child = spawn(runtime, [script, ...args], {
     // Only the launcher owns terminal input, so child key handlers cannot swallow Ctrl+C.
     stdio: ['ignore', 'inherit', 'inherit'],
-    env: persistent ? process.env : { ...process.env, CI: 'true' },
+    env: { ...process.env, ...(!persistent ? { CI: 'true' } : {}), ...extraEnv },
     detached: process.platform !== 'win32',
   });
   children.add(child);
@@ -85,20 +85,44 @@ function run(script, args, persistent = false) {
 async function requirePort(port, host) {
   await new Promise((resolve, reject) => {
     const server = createServer();
-    server.once('error', () =>
-      reject(
-        new Error(
-          `Port ${port} is already in use. Stop the existing development server and run npm run dev again.`,
-        ),
-      ),
-    );
+    server.once('error', reject);
     server.listen(port, host, () => server.close(resolve));
   });
 }
 
+async function selectPort(preferredPort, host, label) {
+  const lastPort = Math.min(preferredPort + 10, 65535);
+  for (let port = preferredPort; port <= lastPort; port++) {
+    try {
+      await requirePort(port, host);
+      return port;
+    } catch (error) {
+      if (error.code !== 'EADDRINUSE') throw error;
+      console.log(`${label} port ${port} is busy; trying the next port.`);
+    }
+  }
+  throw new Error(`No ${label.toLowerCase()} port is available from ${preferredPort} through ${lastPort}. Stop an earlier development server and retry.`);
+}
+
+async function waitForServer(url, label) {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
+      if (response.ok) return;
+    } catch {
+      /* Server is starting. */
+    }
+    await delay(300);
+  }
+  throw new Error(`The local ${label} did not become ready within 60 seconds.`);
+}
+
 try {
-  await requirePort(frontendPort, 'localhost');
-  await requirePort(8787, '127.0.0.1');
+  const frontendPort = await selectPort(preferredFrontendPort, 'localhost', 'Frontend');
+  const backendPort = await selectPort(8787, '127.0.0.1', 'Backend');
+  const backendUrl = `http://127.0.0.1:${backendPort}`;
+  console.log('Starting the local calendar backend and frontend…');
   // Wrangler needs its static asset directory even when Vite serves the frontend.
   if (!existsSync('dist/index.html')) await run('node_modules/vite/bin/vite.js', ['build']);
   await run('node_modules/wrangler/bin/wrangler.js', [
@@ -110,31 +134,18 @@ try {
   ]);
   void run(
     'node_modules/wrangler/bin/wrangler.js',
-    ['dev', '--local', '--ip', '127.0.0.1', '--port', '8787'],
+    ['dev', '--local', '--ip', '127.0.0.1', '--port', String(backendPort), '--inspector-port', '0'],
     true,
   );
-  const deadline = Date.now() + 60_000;
-  let ready = false;
-  while (Date.now() < deadline && !ready) {
-    try {
-      const response = await fetch('http://127.0.0.1:8787/api/config', {
-        signal: AbortSignal.timeout(1000),
-      });
-      ready = response.ok;
-    } catch {
-      /* Backend is starting. */
-    }
-    if (!ready) await delay(300);
-  }
-  if (!ready) throw new Error('The local backend did not become ready within 60 seconds.');
-  console.log(
-    `\nBackend ready. Open http://localhost:${frontendPort} — Ctrl+C stops both servers.\n`,
-  );
-  await run(
+  await waitForServer(`${backendUrl}/api/config`, 'backend');
+  void run(
     'node_modules/vite/bin/vite.js',
     ['--host', 'localhost', '--port', String(frontendPort), '--strictPort'],
     true,
+    { CALENDAR_BACKEND_URL: backendUrl },
   );
+  await waitForServer(`http://localhost:${frontendPort}`, 'frontend');
+  console.log(`\nCalendar ready. Open http://localhost:${frontendPort} — Ctrl+C stops both servers.\n`);
 } catch (error) {
   console.error(error.message);
   stop(1);

@@ -15,11 +15,13 @@ npm ci
 npm run dev
 ```
 
-`npm run dev` starts both the local backend and Vite frontend, applies pending local database migrations, and waits for the backend before serving the interface at `http://localhost:5173`. Ctrl+C stops both servers. If either server stops, the other is shut down too. Ports 5173 and 8787 must be free; stop any earlier dev servers first. No remote database is modified.
+`npm run dev` starts both the local backend and Vite frontend, applies pending local database migrations, and waits for both servers before printing the ready URL at `http://localhost:5173`. If that port is busy, it tries 5174 through 5183. Set `CALENDAR_DEV_PORT` to choose a different starting port; the launcher tries that port and the next ten ports. The backend tries 8787 through 8797, and the frontend proxy uses the selected backend automatically. Ctrl+C stops both servers. If either server stops, the other is shut down too. No remote database is modified.
 
 The launcher requires Node 22.12+ and can use the compatible bundled Codex runtime if the default Node is older. You can explicitly select a runtime with `CALENDAR_NODE`. On other computers, install Node 24. `npm run dev:frontend` and `npm run worker:dev` remain available for running each server separately.
 
 Without local Google configuration, the app shows its fictional demo, stored under `daymark.demo.v1` in this browser. It does not send demo tasks or events to Google. Local Google login requires a separate development OAuth client configured in `.dev.vars`; `.env.google.local` is for production setup and is not loaded by the development launcher.
+
+Untouched demo samples refresh when reopened in a later month. Edited workspaces keep their original dates and content; Settings → Reset demo workspace replaces them with fresh samples. Browser storage is separate for each localhost port, so use the ready URL printed by the launcher. A first launch may take longer while Vite compiles dependencies.
 
 For the full Worker, copy `.dev.vars.example` to `.dev.vars`, fill in the values locally, and run:
 

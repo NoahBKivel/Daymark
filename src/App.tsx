@@ -192,6 +192,18 @@ export default function App() {
   const [now, setNow] = useState(DateTime.now);
   const [sidebar, setSidebar] = useState(() => window.innerWidth > 900);
   const [taskPanel, setTaskPanel] = useState(() => window.innerWidth > 1100);
+  useEffect(() => {
+    const left = matchMedia('(min-width: 901px)');
+    const right = matchMedia('(min-width: 1101px)');
+    const updateLeft = () => setSidebar(left.matches);
+    const updateRight = () => setTaskPanel(right.matches);
+    left.addEventListener('change', updateLeft);
+    right.addEventListener('change', updateRight);
+    return () => {
+      left.removeEventListener('change', updateLeft);
+      right.removeEventListener('change', updateRight);
+    };
+  }, []);
   const [editor, setEditor] = useState<Editor>(null);
   const [createMenu, setCreateMenu] = useState(false);
   const [dialog, setDialog] = useState<'settings' | 'about' | 'privacy' | 'connect' | null>(
@@ -412,7 +424,12 @@ export default function App() {
     },
     [mode, queryClient],
   );
-  const tasks = rangeQuery.data?.tasks || [];
+  const [pendingTaskDates, setPendingTaskDates] = useState<Record<string, Task>>({});
+  const tasks = useMemo(() => {
+    const rows = new Map((rangeQuery.data?.tasks || []).map((task) => [task.id, task]));
+    for (const task of Object.values(pendingTaskDates)) rows.set(task.id, task);
+    return [...rows.values()].filter((task) => taskOverlaps(task, range.start, range.end));
+  }, [rangeQuery.data?.tasks, pendingTaskDates, range.start, range.end]);
   const events = rangeQuery.data?.events || [];
   const visibleTasks = tasks.filter(
     (t) => !hidden.has(`list:${t.listId}`) && (settings.showCompleted || !t.completed),
@@ -422,6 +439,7 @@ export default function App() {
     () => [
       ...visibleTasks.map((t) => ({
         id: `task:${t.id}`,
+        editable: !pendingTaskDates[t.id],
         title: t.title,
         start: t.startDate || t.dueDate!,
         end: addDays(t.dueDate!, 1),
@@ -464,7 +482,7 @@ export default function App() {
         },
       })),
     ],
-    [visibleTasks, visibleEvents, lists, calendars, now, settings.timeZone],
+    [visibleTasks, visibleEvents, lists, calendars, now, settings.timeZone, pendingTaskDates],
   );
   function goTo(date: string, day = false) {
     const api = calendarRef.current?.getApi();
@@ -569,6 +587,7 @@ export default function App() {
           {kind === 'task' && task ? (
             <button
               className={`event-check ${task.completed ? 'checked' : ''}`}
+              disabled={!!pendingTaskDates[task.id]}
               aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${task.title}`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
@@ -954,8 +973,10 @@ export default function App() {
                 }}
                 eventClick={(info) => {
                   const props = info.event.extendedProps;
-                  if (props.kind === 'task') setEditor({ kind: 'task', task: props.task });
-                  else setEditor({ kind: 'event', event: props.event });
+                  if (props.kind === 'task') {
+                    if (!pendingTaskDates[props.task.id])
+                      setEditor({ kind: 'task', task: props.task });
+                  } else setEditor({ kind: 'event', event: props.event });
                 }}
                 eventContent={renderEvent}
                 eventChange={async (info) => {
@@ -975,8 +996,35 @@ export default function App() {
                         setEditor({ kind: 'task', task: draft });
                         return;
                       }
-                      await client.saveTask(draft, t);
-                      saved('Task dates updated');
+                      setPendingTaskDates((pending) => ({ ...pending, [t.id]: draft }));
+                      try {
+                        await queryClient.cancelQueries({ queryKey: [mode, 'range'] });
+                        const updated = await client.saveTask(draft, t);
+                        queryClient.setQueriesData<RangeData>(
+                          { queryKey: [mode, 'range'] },
+                          (data) =>
+                            data && {
+                              ...data,
+                              tasks: data.tasks.map((task) => (task.id === t.id ? updated : task)),
+                            },
+                        );
+                        queryClient.setQueriesData<{ tasks: Task[]; hasMore: boolean }>(
+                          { queryKey: [mode, 'task-panel'] },
+                          (data) =>
+                            data && {
+                              ...data,
+                              tasks: data.tasks.map((task) => (task.id === t.id ? updated : task)),
+                            },
+                        );
+                        setToast('Task dates updated');
+                        await queryClient.invalidateQueries({ queryKey: [mode] });
+                      } finally {
+                        setPendingTaskDates((pending) => {
+                          const next = { ...pending };
+                          delete next[t.id];
+                          return next;
+                        });
+                      }
                     } else {
                       const e = props.event as CalendarEvent;
                       const moved = {
@@ -999,6 +1047,15 @@ export default function App() {
               />
             </div>
             <footer className="calendar-footer">
+              {demo && rangeQuery.data &&
+                demoState().tasks.some((task) => task.id === 'demo-presentation' &&
+                  !DateTime.fromISO(task.createdAt).hasSame(now, 'month')) &&
+                visibleTasks.every((task) => task.seriesId === 'demo-reflection') &&
+                visibleEvents.length === 0 && (
+                  <button className="text-button" onClick={() => setDialog('settings')}>
+                    Older demo samples saved. Reset demo in Settings for fresh content
+                  </button>
+                )}
               {!demo && (
                 <div>
                   <span className="status-dot" />

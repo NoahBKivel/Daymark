@@ -7,6 +7,37 @@ test.beforeEach(async ({ page }) => {
   );
   await page.goto('/?demo=1');
 });
+
+test('opens desktop panels when a narrow window is widened', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  await page.reload();
+  await expect(page.locator('.sidebar')).toHaveCount(0);
+  await expect(page.locator('.task-panel')).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('.sidebar')).toBeVisible();
+  await expect(page.locator('.task-panel')).toBeVisible();
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  await page.setViewportSize({ width: 1020, height: 900 });
+  await expect(page.locator('.sidebar')).toHaveCount(0);
+});
+
+test('refreshes untouched demo samples when reopening in a later month', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-16T16:00:00Z'));
+  await page.evaluate(() => localStorage.removeItem('daymark.demo.v1'));
+  await page.reload();
+  await page.locator('.fc-day-today .fc-daygrid-day-number').click();
+  await expect(page.locator('.fc-event').filter({ hasText: 'Coffee with Jenna' })).toBeVisible();
+  await page.clock.setFixedTime(new Date('2026-10-16T16:00:00Z'));
+  await page.reload();
+  await page.locator('.fc-day-today .fc-daygrid-day-number').click();
+  await expect(page.locator('.fc-event').filter({ hasText: 'Coffee with Jenna' })).toBeVisible();
+  await expect(page.locator('.fc-event').filter({ hasText: 'Math problem set' }).first()).toBeVisible();
+  const createdAt = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('daymark.demo.v1')!).tasks[0].createdAt,
+  );
+  expect(createdAt).toContain('2026-10-16');
+});
 test('switches month creation between task and event while retaining title and date', async ({
   page,
 }) => {
@@ -287,3 +318,114 @@ test('saves an externally organized event color while keeping its details locked
     page.getByRole('dialog').getByRole('button', { name: 'Event color Blueberry', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 });
+
+for (const fail of [false, true]) {
+  test(`task drop stays on the new day during a delayed save${fail ? ' and reverts on failure' : ''}`, async ({
+    page,
+  }) => {
+    await expect(page.locator('.fc-day-today')).toBeVisible({ timeout: 30_000 });
+    const date = (await page.locator('.fc-day-today').getAttribute('data-date'))!;
+    const destination = DateTime.fromISO(date).plus({ days: 1 }).toISODate()!;
+    const state = await page.evaluate(() => JSON.parse(localStorage.getItem('daymark.demo.v1')!));
+    let task = {
+      ...state.tasks[0],
+      id: 'drag-task',
+      title: 'Drag task',
+      startDate: null,
+      dueDate: date,
+      recurrence: null,
+      seriesId: undefined,
+      completed: false,
+    };
+    let releaseSave!: () => void;
+    const saveGate = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    let saveStarted = false;
+    let rangeReads = 0;
+    await page.route('**/api/**', async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
+      if (path === '/api/config') return route.fulfill({ json: { configured: true } });
+      if (path === '/api/me')
+        return route.fulfill({
+          json: {
+            user: { id: 'tester', name: 'Tester', email: 'tester@example.com' },
+            settings: state.settings,
+            hasSettings: true,
+          },
+        });
+      if (path === '/api/lists') return route.fulfill({ json: state.lists });
+      if (path === '/api/calendars') return route.fulfill({ json: [] });
+      if (path === '/api/range') {
+        rangeReads++;
+        return route.fulfill({ json: { tasks: [task], events: [], errors: [] } });
+      }
+      if (path === '/api/tasks/drag-task' && route.request().method() === 'PUT') {
+        saveStarted = true;
+        const body = route.request().postDataJSON();
+        await saveGate;
+        if (fail) return route.fulfill({ status: 409, json: { error: 'Task save rejected' } });
+        task = { ...task, ...body.task, version: task.version + 1 };
+        return route.fulfill({ json: task });
+      }
+      if (path === '/api/tasks') return route.fulfill({ json: { tasks: [task], hasMore: false } });
+      return route.fulfill({ json: { pending: 0, reconnect: false } });
+    });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const sourceTask = page
+      .locator(`[data-date="${date}"] .fc-event:visible`)
+      .filter({ hasText: 'Drag task' });
+    const targetTask = page
+      .locator(`[data-date="${destination}"] .fc-event:visible`)
+      .filter({ hasText: 'Drag task' });
+    await expect(sourceTask).toBeVisible();
+    const from = (await sourceTask.boundingBox())!;
+    const to = (await page
+      .locator(`[data-date="${destination}"] .fc-daygrid-day-frame`)
+      .boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + 45, { steps: 12 });
+    await page.mouse.up();
+    await expect.poll(() => saveStarted).toBe(true);
+    await expect(targetTask).toBeVisible();
+    const previousReads = rangeReads;
+    await page.evaluate(async () => {
+      const now = Date.now;
+      Date.now = () => now() + 60_000;
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      window.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      window.dispatchEvent(new Event('visibilitychange'));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      Reflect.deleteProperty(document, 'visibilityState');
+      Date.now = now;
+    });
+    await expect.poll(() => rangeReads).toBeGreaterThan(previousReads);
+    const jumpedBack = await page.evaluate(async (oldDate) => {
+      let jumped = false;
+      for (let i = 0; i < 30; i++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        jumped ||= [...document.querySelectorAll(`[data-date="${oldDate}"] .fc-event`)].some(
+          (event) =>
+            event.textContent?.includes('Drag task') && event.getBoundingClientRect().height > 0,
+        );
+      }
+      return jumped;
+    }, date);
+    expect(jumpedBack).toBe(false);
+    releaseSave();
+    if (fail) {
+      await expect(sourceTask).toBeVisible();
+      await expect(targetTask).toHaveCount(0);
+      await expect(page.getByText('Task save rejected', { exact: true })).toBeVisible();
+    } else {
+      await expect(page.getByText('Task dates updated', { exact: true })).toBeVisible();
+      await expect(targetTask).toBeVisible();
+      await expect(sourceTask).toHaveCount(0);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(targetTask).toBeVisible();
+    }
+  });
+}
