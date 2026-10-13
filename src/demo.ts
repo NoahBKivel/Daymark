@@ -22,6 +22,7 @@ import {
 
 const KEY = 'daymark.demo.v1';
 export type DemoState = {
+  seededAt?: string;
   lists: TaskList[];
   tasks: Task[];
   events: CalendarEvent[];
@@ -58,6 +59,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
     color: null,
   };
   return {
+    seededAt: now.toISO()!,
     settings: defaultSettings(),
     lists: [
       { id: 'school', name: 'School', color: '#77946d' },
@@ -203,17 +205,32 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
   };
 }
 export function refreshUntouchedDemo(state: DemoState, now: DateTime = DateTime.now()): DemoState {
-  const sample = state.tasks.find((task) => task.id === 'demo-presentation');
-  if (!sample) return state;
-  const seededAt = DateTime.fromISO(sample.createdAt).setZone(sample.timeZone);
+  const sample =
+    state.tasks.find((task) => task.id === 'demo-presentation') ||
+    state.tasks.find((task) => task.id.startsWith('demo-'));
+  const savedAt = state.seededAt || sample?.createdAt;
+  if (!savedAt) return state;
+  const seededAt = DateTime.fromISO(savedAt).setZone(sample?.timeZone || state.settings.timeZone);
   if (!seededAt.isValid || seededAt.hasSame(now, 'month')) return state;
   const original = seedDemo(seededAt);
-  const unchanged = (['tasks', 'events', 'lists'] as const).every(
-    (key) => JSON.stringify(state[key]) === JSON.stringify(original[key]),
-  );
-  return unchanged ? { ...seedDemo(now), settings: state.settings } : state;
+  const fresh = seedDemo(now);
+  const refresh = <T extends { id: string }>(rows: T[], previous: T[], next: T[]) =>
+    rows.map((row) => {
+      const oldSample = previous.find((item) => item.id === row.id);
+      const newSample = next.find((item) => item.id === row.id);
+      return oldSample && newSample && JSON.stringify(row) === JSON.stringify(oldSample)
+        ? newSample
+        : row;
+    });
+  return {
+    ...state,
+    seededAt: now.toISO()!,
+    tasks: refresh(state.tasks, original.tasks, fresh.tasks).map((task, index) =>
+      state.lists.some((list) => list.id === task.listId) ? task : state.tasks[index],
+    ),
+    events: refresh(state.events, original.events, fresh.events),
+  };
 }
-
 export function readDemo(): DemoState {
   try {
     const raw = localStorage.getItem(KEY);

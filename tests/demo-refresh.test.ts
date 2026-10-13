@@ -13,16 +13,34 @@ describe('saved demo samples', () => {
     expect(updated.events).toEqual(seedDemo(now).events);
     expect(updated.settings.hour24).toBe(true);
   });
-  it('preserves edits, added tasks, and deleted events across month changes', () => {
-    for (const change of [
-      (state: ReturnType<typeof seedDemo>) => { state.tasks[0].title = 'My edited task'; },
-      (state: ReturnType<typeof seedDemo>) => { state.tasks.push({ ...state.tasks[0], id: 'my-task' }); },
-      (state: ReturnType<typeof seedDemo>) => { state.events.pop(); },
-    ]) {
-      const state = seedDemo(before);
-      change(state);
-      expect(refreshUntouchedDemo(state, now)).toBe(state);
-    }
+  it('refreshes untouched samples while retaining edits, additions, and deletions', () => {
+    const state = seedDemo(before);
+    state.tasks[0].title = 'My edited task';
+    const customTask = { ...state.tasks[0], id: 'my-task' };
+    state.tasks.push(customTask);
+    const deletedEvent = state.events.pop()!;
+    const updated = refreshUntouchedDemo(state, now);
+    expect(updated.tasks[0]).toEqual(state.tasks[0]);
+    expect(updated.tasks.at(-1)).toEqual(customTask);
+    expect(updated.events.some((event) => event.id === deletedEvent.id)).toBe(false);
+    expect(updated.tasks.find((task) => task.id === 'demo-math')).toEqual(
+      seedDemo(now).tasks.find((task) => task.id === 'demo-math'),
+    );
+    expect(updated.events[0]).toEqual(seedDemo(now).events[0]);
+    const following = now.plus({ months: 1 });
+    const again = refreshUntouchedDemo(updated, following);
+    expect(again.tasks[0]).toEqual(state.tasks[0]);
+    expect(again.tasks.find((task) => task.id === 'demo-math')).toEqual(
+      seedDemo(following).tasks.find((task) => task.id === 'demo-math'),
+    );
+  });
+  it('refreshes legacy saved workspaces without a seed timestamp', () => {
+    const state = seedDemo(before);
+    delete state.seededAt;
+    state.tasks.push({ ...state.tasks[0], id: 'custom' });
+    const updated = refreshUntouchedDemo(state, now);
+    expect(updated.tasks.find((task) => task.id === 'demo-math')?.dueDate).toBe('2026-10-17');
+    expect(updated.tasks.at(-1)).toEqual(state.tasks.at(-1));
   });
   it('keeps current-month samples unchanged', () => {
     const state = seedDemo(now);

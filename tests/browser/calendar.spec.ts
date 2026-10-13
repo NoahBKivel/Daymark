@@ -22,21 +22,45 @@ test('opens desktop panels when a narrow window is widened', async ({ page }) =>
   await expect(page.locator('.sidebar')).toHaveCount(0);
 });
 
-test('refreshes untouched demo samples when reopening in a later month', async ({ page }) => {
+test('refreshes untouched demo samples while preserving edits when reopening in a later month', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-16T16:00:00Z'));
   await page.evaluate(() => localStorage.removeItem('daymark.demo.v1'));
   await page.reload();
   await page.locator('.fc-day-today .fc-daygrid-day-number').click();
   await expect(page.locator('.fc-event').filter({ hasText: 'Coffee with Jenna' })).toBeVisible();
+  await page.evaluate(() => {
+    const key = 'daymark.demo.v1';
+    const state = JSON.parse(localStorage.getItem(key)!);
+    state.tasks[0].title = 'My saved task edit';
+    state.tasks.push({ ...state.tasks[0], id: 'my-custom-task' });
+    localStorage.setItem(key, JSON.stringify(state));
+  });
   await page.clock.setFixedTime(new Date('2026-10-16T16:00:00Z'));
   await page.reload();
   await page.locator('.fc-day-today .fc-daygrid-day-number').click();
   await expect(page.locator('.fc-event').filter({ hasText: 'Coffee with Jenna' })).toBeVisible();
-  await expect(page.locator('.fc-event').filter({ hasText: 'Math problem set' }).first()).toBeVisible();
-  const createdAt = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('daymark.demo.v1')!).tasks[0].createdAt,
+  await expect(
+    page.locator('.fc-event').filter({ hasText: 'Math problem set' }).first(),
+  ).toBeVisible();
+  const createdAt = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem('daymark.demo.v1')!).tasks.find(
+        (task: { id: string }) => task.id === 'demo-math',
+      ).createdAt,
   );
   expect(createdAt).toContain('2026-10-16');
+  const preserved = await page.evaluate(() => {
+    const tasks = JSON.parse(localStorage.getItem('daymark.demo.v1')!).tasks;
+    return tasks.filter((task: { id: string }) =>
+      ['demo-presentation', 'my-custom-task'].includes(task.id),
+    );
+  });
+  expect(preserved).toHaveLength(2);
+  expect(preserved.every((task: { title: string }) => task.title === 'My saved task edit')).toBe(
+    true,
+  );
 });
 test('switches month creation between task and event while retaining title and date', async ({
   page,
