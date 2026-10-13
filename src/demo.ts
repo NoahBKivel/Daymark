@@ -210,7 +210,10 @@ export function refreshUntouchedDemo(state: DemoState, now: DateTime = DateTime.
     state.tasks.find((task) => task.id.startsWith('demo-'));
   const savedAt = state.seededAt || sample?.createdAt;
   if (!savedAt) return state;
-  const seededAt = DateTime.fromISO(savedAt).setZone(sample?.timeZone || state.settings.timeZone);
+  const parsedSeededAt = DateTime.fromISO(savedAt);
+  const seedZone = sample?.timeZone || state.settings.timeZone;
+  const seededAt =
+    parsedSeededAt.zoneName === seedZone ? parsedSeededAt : parsedSeededAt.setZone(seedZone);
   if (!seededAt.isValid || seededAt.hasSame(now, 'month')) return state;
   const original = seedDemo(seededAt);
   const fresh = seedDemo(now);
