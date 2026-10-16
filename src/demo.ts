@@ -31,12 +31,12 @@ export type DemoState = {
 export const demoCalendars: CalendarInfo[] = [
   {
     id: 'personal',
-    summary: 'Personal calendar',
+    summary: 'Calendar one',
     backgroundColor: '#548bce',
     accessRole: 'owner',
     primary: true,
   },
-  { id: 'university', summary: 'University', backgroundColor: '#bc92cd', accessRole: 'reader' },
+  { id: 'university', summary: 'Calendar two', backgroundColor: '#bc92cd', accessRole: 'reader' },
 ];
 export function seedDemo(now: DateTime = DateTime.now()): DemoState {
   const month = now.startOf('month');
@@ -62,31 +62,30 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
     seededAt: now.toISO()!,
     settings: defaultSettings(),
     lists: [
-      { id: 'school', name: 'School', color: '#77946d' },
-      { id: 'personal-tasks', name: 'Personal', color: '#6b9fbe' },
+      { id: 'school', name: 'Tasks', color: '#77946d' },
+      { id: 'personal-tasks', name: 'General', color: '#6b9fbe' },
       { id: 'projects', name: 'Projects', color: '#c38b60' },
     ],
     tasks: [
       {
         ...base,
         id: 'demo-presentation',
-        title: 'Textbook presentation · first draft',
-        description:
-          'Bring the big ideas together. Outline the argument, add supporting examples, and prepare the first slide draft.',
+        title: 'Prepare a draft',
+        description: 'Outline the main points, add examples, and review the draft.',
         listId: 'school',
         startDate: day(anchor - 2),
         dueDate: day(anchor + 2),
         checklist: [
-          { id: 'outline', title: 'Outline the main ideas', completed: true },
-          { id: 'examples', title: 'Find supporting examples', completed: false },
-          { id: 'slides', title: 'Put together the slides', completed: false },
+          { id: 'outline', title: 'Create an outline', completed: true },
+          { id: 'examples', title: 'Add examples', completed: false },
+          { id: 'slides', title: 'Review the draft', completed: false },
         ],
       },
       {
         ...base,
         id: 'demo-portfolio',
-        title: 'A little portfolio refresh',
-        description: 'Update project screenshots and write a few words about what I learned.',
+        title: 'Update a project',
+        description: 'Review the project and update its details.',
         listId: 'projects',
         startDate: day(anchor + 1),
         dueDate: day(anchor + 5),
@@ -95,7 +94,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-reading',
-        title: 'Read chapters 4–6',
+        title: 'Review a document',
         listId: 'school',
         startDate: day(anchor - 7),
         dueDate: day(anchor - 4),
@@ -105,7 +104,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-math',
-        title: 'Math problem set',
+        title: 'Complete an assignment',
         listId: 'school',
         startDate: today,
         dueDate: addDays(today, 1),
@@ -114,7 +113,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-resume',
-        title: 'Update my résumé',
+        title: 'Update a document',
         listId: 'personal-tasks',
         startDate: null,
         dueDate: day(anchor + 3),
@@ -122,19 +121,19 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-groceries',
-        title: 'Pick up groceries',
+        title: 'Complete an errand',
         listId: 'personal-tasks',
         startDate: null,
         dueDate: today,
         checklist: [
-          { id: 'a', title: 'Coffee beans', completed: false },
-          { id: 'b', title: 'Something green', completed: false },
+          { id: 'a', title: 'Item one', completed: false },
+          { id: 'b', title: 'Item two', completed: false },
         ],
       },
       {
         ...base,
         id: 'demo-reading-list',
-        title: 'Find a book for the weekend',
+        title: 'Review a resource',
         listId: 'personal-tasks',
         startDate: null,
         dueDate: null,
@@ -142,7 +141,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-idea',
-        title: 'Sketch the next project idea',
+        title: 'Plan a project',
         listId: 'projects',
         startDate: null,
         dueDate: null,
@@ -150,7 +149,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         ...base,
         id: 'demo-reflection',
-        title: 'Weekly reflection',
+        title: 'Weekly review',
         listId: 'personal-tasks',
         startDate: null,
         dueDate: day(5),
@@ -161,27 +160,27 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         id: 'demo-jenna',
         calendarId: 'personal',
-        summary: 'Coffee with Jenna',
-        description: 'A good coffee and a catch-up.',
-        location: 'The neighborhood café',
+        summary: 'Scheduled meeting',
+        description: 'Discuss updates and next steps.',
+        location: 'Meeting location',
         start: { dateTime: at(anchor, 11) },
         end: { dateTime: at(anchor, 12) },
         organizer: { self: true },
-        attendees: [{ email: 'jenna@example.com', responseStatus: 'accepted' }],
+        attendees: [{ email: 'guest@example.com', responseStatus: 'accepted' }],
       },
       {
         id: 'demo-design',
         calendarId: 'university',
-        summary: 'Design studio',
-        location: 'Studio 204',
+        summary: 'Workshop',
+        location: 'Meeting room',
         start: { dateTime: at(anchor - 1, 14) },
         end: { dateTime: at(anchor - 1, 15, 30) },
       },
       {
         id: 'demo-study',
         calendarId: 'personal',
-        summary: 'Study group',
-        location: 'Library, second floor',
+        summary: 'Group meeting',
+        location: 'Meeting room',
         start: { dateTime: at(anchor + 2, 16) },
         end: { dateTime: at(anchor + 2, 17) },
         organizer: { self: true },
@@ -189,7 +188,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         id: 'demo-walk',
         calendarId: 'personal',
-        summary: 'An afternoon outside',
+        summary: 'Scheduled activity',
         start: { dateTime: at(anchor + 4, 15) },
         end: { dateTime: at(anchor + 4, 17) },
         organizer: { self: true },
@@ -197,7 +196,7 @@ export function seedDemo(now: DateTime = DateTime.now()): DemoState {
       {
         id: 'demo-seminar',
         calendarId: 'university',
-        summary: 'Research seminar',
+        summary: 'Presentation',
         start: { dateTime: at(anchor - 6, 10) },
         end: { dateTime: at(anchor - 6, 11, 30) },
       },
@@ -231,13 +230,67 @@ export function refreshUntouchedDemo(state: DemoState, now: DateTime = DateTime.
     events: refresh(state.events, original.events, fresh.events),
   };
 }
+const legacyDemoText: Record<string, string> = {
+  'Textbook presentation · first draft': 'Prepare a draft',
+  'Bring the big ideas together. Outline the argument, add supporting examples, and prepare the first slide draft.':
+    'Outline the main points, add examples, and review the draft.',
+  'Outline the main ideas': 'Create an outline',
+  'Find supporting examples': 'Add examples',
+  'Put together the slides': 'Review the draft',
+  'A little portfolio refresh': 'Update a project',
+  'Update project screenshots and write a few words about what I learned.':
+    'Review the project and update its details.',
+  'Read chapters 4–6': 'Review a document',
+  'Math problem set': 'Complete an assignment',
+  'Update my résumé': 'Update a document',
+  'Pick up groceries': 'Complete an errand',
+  'Coffee beans': 'Item one',
+  'Something green': 'Item two',
+  'Find a book for the weekend': 'Review a resource',
+  'Sketch the next project idea': 'Plan a project',
+  'Weekly reflection': 'Weekly review',
+  'Coffee with Jenna': 'Scheduled meeting',
+  'A good coffee and a catch-up.': 'Discuss updates and next steps.',
+  'The neighborhood café': 'Meeting location',
+  'jenna@example.com': 'guest@example.com',
+  'Design studio': 'Workshop',
+  'Studio 204': 'Meeting room',
+  'Study group': 'Group meeting',
+  'Library, second floor': 'Meeting room',
+  'An afternoon outside': 'Scheduled activity',
+  'Research seminar': 'Presentation',
+  'Personal calendar': 'Calendar one',
+  University: 'Calendar two',
+  School: 'Tasks',
+  Personal: 'General',
+};
+function genericDemoContent(state: DemoState): DemoState {
+  const replace = (value: unknown): unknown => {
+    if (typeof value === 'string') return legacyDemoText[value] || value;
+    if (Array.isArray(value)) return value.map(replace);
+    if (value && typeof value === 'object')
+      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, replace(entry)]));
+    return value;
+  };
+  return {
+    ...state,
+    tasks: state.tasks.map((task) =>
+      task.id.startsWith('demo-') ? (replace(task) as Task) : task,
+    ),
+    events: state.events.map((event) =>
+      event.id.startsWith('demo-') ? (replace(event) as CalendarEvent) : event,
+    ),
+    lists: state.lists.map((list) => ({ ...list, name: legacyDemoText[list.name] || list.name })),
+  };
+}
+
 export function readDemo(): DemoState {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const stored = JSON.parse(raw) as DemoState;
+      const stored = genericDemoContent(JSON.parse(raw) as DemoState);
       const state = refreshUntouchedDemo(stored);
-      if (state !== stored) writeDemo(state);
+      writeDemo(state);
       memory = state;
       return state;
     }

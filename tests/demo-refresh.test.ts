@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DateTime } from 'luxon';
-import { refreshUntouchedDemo, seedDemo } from '../src/demo';
+import { readDemo, refreshUntouchedDemo, seedDemo } from '../src/demo';
 
 describe('saved demo samples', () => {
   const before = DateTime.fromISO('2026-09-16T12:00:00', { zone: 'America/New_York' });
@@ -46,4 +46,25 @@ describe('saved demo samples', () => {
     const state = seedDemo(now);
     expect(refreshUntouchedDemo(state, now.plus({ days: 1 }))).toBe(state);
   });
+});
+
+it('replaces legacy sample names without changing custom items', () => {
+  const state = seedDemo();
+  state.events[0].summary = 'Coffee with Jenna';
+  state.events[0].attendees = [{ email: 'jenna@example.com' }];
+  state.tasks[0].title = 'Textbook presentation · first draft';
+  const custom = { ...state.tasks[0], id: 'custom-task', title: 'My custom task' };
+  state.tasks.push(custom);
+  const setItem = vi.fn();
+  vi.stubGlobal('localStorage', { getItem: () => JSON.stringify(state), setItem });
+  try {
+    const updated = readDemo();
+    expect(updated.events[0].summary).toBe('Scheduled meeting');
+    expect(updated.events[0].attendees?.[0].email).toBe('guest@example.com');
+    expect(updated.tasks[0].title).toBe('Prepare a draft');
+    expect(updated.tasks.at(-1)).toEqual(custom);
+    expect(setItem).toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

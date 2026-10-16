@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
-import { colorDemoEvent, deleteDemoEvent, demoEventRange, saveDemoEvent } from '../src/demo-events';
+import {
+  colorDemoEvent,
+  deleteDemoEvent,
+  demoEventRange,
+  rescheduleDemoEvent,
+  saveDemoEvent,
+} from '../src/demo-events';
 import { eventInputSchema, type CalendarEvent } from '../src/shared/model';
 
 const series = (): CalendarEvent => ({
@@ -86,4 +92,23 @@ it('changes an invitation occurrence color without replacing its organizer or de
     end: selected.end,
   });
   expect(updated.filter((event) => event.colorId === '9')).toHaveLength(1);
+});
+
+it('reschedules a demo occurrence directly without altering the series or other event fields', () => {
+  const master = series();
+  const selected = range([master])[1];
+  const dates = {
+    start: { dateTime: '2026-11-03T10:00:00-05:00', timeZone: 'America/New_York' },
+    end: { dateTime: '2026-11-03T11:00:00-05:00', timeZone: 'America/New_York' },
+  };
+  const result = rescheduleDemoEvent([master], selected, dates);
+  expect(range(result.rows)).toHaveLength(4);
+  expect(result.rows.find((event) => event.id === master.id)).toEqual(master);
+  expect(result.event).toMatchObject({
+    ...dates,
+    summary: master.summary,
+    reminders: master.reminders,
+    recurringEventId: master.id,
+    originalStartTime: selected.originalStartTime,
+  });
 });

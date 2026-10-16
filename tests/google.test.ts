@@ -10,6 +10,61 @@ import type { CalendarEvent, EventInput } from '../src/shared/model';
 describe('Google event integration', () => {
   const env = {} as Env;
   afterEach(() => vi.restoreAllMocks());
+  it('reschedules only the selected occurrence dates and preserves event metadata', async () => {
+    const google = new Google(env, 'alice');
+    vi.spyOn(google, 'writable').mockResolvedValue();
+    const event: CalendarEvent = {
+      id: 'occurrence',
+      calendarId: 'cal',
+      summary: 'Meeting',
+      start: { dateTime: '2026-10-13T10:00:00-04:00' },
+      end: { dateTime: '2026-10-13T11:00:00-04:00' },
+      recurringEventId: 'series',
+      organizer: { self: true },
+      etag: 'v1',
+      attendees: [{ email: 'guest@example.com', responseStatus: 'accepted' }],
+      conferenceData: { conferenceId: 'existing-meet' },
+      colorId: '9',
+    };
+    vi.spyOn(google, 'getEvent').mockResolvedValue(event);
+    const request = vi.spyOn(google, 'request').mockResolvedValue(event);
+    const dates = {
+      start: { dateTime: '2026-10-14T10:00:00-04:00' },
+      end: { dateTime: '2026-10-14T11:00:00-04:00' },
+    };
+    await google.rescheduleEvent('cal', 'occurrence', dates, 'v1');
+    expect(request).toHaveBeenCalledWith(
+      '/calendar/v3/calendars/cal/events/occurrence?sendUpdates=all',
+      'PATCH',
+      dates,
+      'v1',
+    );
+    request.mockClear();
+    await expect(google.rescheduleEvent('cal', 'occurrence', dates, 'stale')).rejects.toMatchObject(
+      { status: 409 },
+    );
+    expect(request).not.toHaveBeenCalled();
+    vi.spyOn(google, 'getEvent').mockResolvedValue({
+      ...event,
+      organizer: { self: false },
+      guestsCanModify: false,
+    });
+    await expect(google.rescheduleEvent('cal', 'occurrence', dates, 'v1')).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(request).not.toHaveBeenCalled();
+    vi.spyOn(google, 'getEvent').mockResolvedValue(event);
+    await google.rescheduleEvent(
+      'cal',
+      'occurrence',
+      { start: { date: '2026-10-14' }, end: { date: '2026-10-15' } },
+      'v1',
+    );
+    expect(request.mock.calls[0][2]).toEqual({
+      start: { date: '2026-10-14', dateTime: null, timeZone: null },
+      end: { date: '2026-10-15', dateTime: null, timeZone: null },
+    });
+  });
   it('changes only the color of an externally organized invitation without notifying guests', async () => {
     const google = new Google(env, 'alice');
     const writable = vi.spyOn(google, 'writable').mockResolvedValue();

@@ -430,7 +430,14 @@ export default function App() {
     for (const task of Object.values(pendingTaskDates)) rows.set(task.id, task);
     return [...rows.values()].filter((task) => taskOverlaps(task, range.start, range.end));
   }, [rangeQuery.data?.tasks, pendingTaskDates, range.start, range.end]);
-  const events = rangeQuery.data?.events || [];
+  const [pendingEventDates, setPendingEventDates] = useState<Record<string, CalendarEvent>>({});
+  const events = useMemo(() => {
+    const rows = new Map(
+      (rangeQuery.data?.events || []).map((event) => [`${event.calendarId}:${event.id}`, event]),
+    );
+    for (const [key, event] of Object.entries(pendingEventDates)) rows.set(key, event);
+    return [...rows.values()];
+  }, [rangeQuery.data?.events, pendingEventDates]);
   const visibleTasks = tasks.filter(
     (t) => !hidden.has(`list:${t.listId}`) && (settings.showCompleted || !t.completed),
   );
@@ -464,6 +471,7 @@ export default function App() {
         end: e.end.date || e.end.dateTime,
         allDay: !!e.start.date,
         editable:
+          !pendingEventDates[`${e.calendarId}:${e.id}`] &&
           ['owner', 'writer'].includes(
             calendars.find((c) => c.id === e.calendarId)?.accessRole || '',
           ) &&
@@ -482,7 +490,16 @@ export default function App() {
         },
       })),
     ],
-    [visibleTasks, visibleEvents, lists, calendars, now, settings.timeZone, pendingTaskDates],
+    [
+      visibleTasks,
+      visibleEvents,
+      lists,
+      calendars,
+      now,
+      settings.timeZone,
+      pendingTaskDates,
+      pendingEventDates,
+    ],
   );
   function goTo(date: string, day = false) {
     const api = calendarRef.current?.getApi();
@@ -976,7 +993,8 @@ export default function App() {
                   if (props.kind === 'task') {
                     if (!pendingTaskDates[props.task.id])
                       setEditor({ kind: 'task', task: props.task });
-                  } else setEditor({ kind: 'event', event: props.event });
+                  } else if (!pendingEventDates[`${props.event.calendarId}:${props.event.id}`])
+                    setEditor({ kind: 'event', event: props.event });
                 }}
                 eventContent={renderEvent}
                 eventChange={async (info) => {
@@ -1036,8 +1054,35 @@ export default function App() {
                           ? { date: info.event.endStr.slice(0, 10) }
                           : { dateTime: info.event.endStr, timeZone: settings.timeZone },
                       };
-                      info.revert();
-                      setEditor({ kind: 'event', event: moved });
+                      const key = `${e.calendarId}:${e.id}`;
+                      setPendingEventDates((pending) => ({ ...pending, [key]: moved }));
+                      try {
+                        await queryClient.cancelQueries({ queryKey: [mode, 'range'] });
+                        const updated = await client.rescheduleEvent(e, {
+                          start: moved.start,
+                          end: moved.end,
+                        });
+                        queryClient.setQueriesData<RangeData>(
+                          { queryKey: [mode, 'range'] },
+                          (data) =>
+                            data && {
+                              ...data,
+                              events: data.events.map((event) =>
+                                event.id === e.id && event.calendarId === e.calendarId
+                                  ? updated
+                                  : event,
+                              ),
+                            },
+                        );
+                        setToast('Event dates updated');
+                        await queryClient.invalidateQueries({ queryKey: [mode, 'range'] });
+                      } finally {
+                        setPendingEventDates((pending) => {
+                          const next = { ...pending };
+                          delete next[key];
+                          return next;
+                        });
+                      }
                     }
                   } catch (e) {
                     info.revert();
@@ -1047,9 +1092,13 @@ export default function App() {
               />
             </div>
             <footer className="calendar-footer">
-              {demo && rangeQuery.data &&
-                demoState().tasks.some((task) => task.id === 'demo-presentation' &&
-                  !DateTime.fromISO(task.createdAt).hasSame(now, 'month')) &&
+              {demo &&
+                rangeQuery.data &&
+                demoState().tasks.some(
+                  (task) =>
+                    task.id === 'demo-presentation' &&
+                    !DateTime.fromISO(task.createdAt).hasSame(now, 'month'),
+                ) &&
                 visibleTasks.every((task) => task.seriesId === 'demo-reflection') &&
                 visibleEvents.length === 0 && (
                   <button className="text-button" onClick={() => setDialog('settings')}>

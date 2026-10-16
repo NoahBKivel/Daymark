@@ -168,3 +168,14 @@ export function colorDemoEvent(
   const updated = { ...current, colorId, etag: crypto.randomUUID() };
   return [...rows.filter((event) => event.id !== selected.id), updated];
 }
+
+export function rescheduleDemoEvent(
+  rows: CalendarEvent[],
+  selected: CalendarEvent,
+  dates: Pick<CalendarEvent, 'start' | 'end'>,
+) {
+  const current = resolve(rows, selected.id);
+  if (!current) throw new Error('This event no longer exists.');
+  const updated = { ...current, ...dates, etag: crypto.randomUUID() };
+  return { rows: [...rows.filter((event) => event.id !== selected.id), updated], event: updated };
+}

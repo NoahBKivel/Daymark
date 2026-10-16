@@ -227,6 +227,25 @@ app.delete('/api/events/:calendar/:id', async (c) => {
   );
   return c.json({ ok: true });
 });
+app.patch('/api/events/:calendar/:id/dates', async (c) => {
+  const body = z
+    .object({
+      start: eventInputSchema.shape.start,
+      end: eventInputSchema.shape.end,
+      etag: z.string().optional(),
+    })
+    .strict()
+    .parse(await c.req.json());
+  const { start, end } = eventInputSchema.parse({ ...body, summary: 'Event' });
+  return c.json(
+    await new Google(c.env, c.get('user').id).rescheduleEvent(
+      c.req.param('calendar'),
+      c.req.param('id'),
+      { start, end },
+      body.etag,
+    ),
+  );
+});
 app.patch('/api/events/:calendar/:id/color', async (c) => {
   const body = z
     .object({

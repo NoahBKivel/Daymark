@@ -870,7 +870,7 @@ export function EventEditor({
       wide
     >
       <form
-        className="editor-form"
+        className="editor-form event-editor-form"
         onSubmit={(e) => {
           e.preventDefault();
           void save();
@@ -914,12 +914,6 @@ export function EventEditor({
                 ))}
             </select>
           </label>
-          {!readOnly && (
-            <div>
-              <div className="section-label">Color</div>
-              <EventColorPicker value={colorId} onChange={setColorId} />
-            </div>
-          )}
           <label className="inline-label">
             <input
               type="checkbox"
@@ -1080,11 +1074,14 @@ export function EventEditor({
               <option value="1440">1 day before</option>
             </select>
           </label>
+        </fieldset>
+        <div className="event-preferences-grid">
           {(guests || event?.attendees?.length) && (
             <label>
               Guest notifications
               <select
                 aria-label="Guest notifications"
+                disabled={readOnly || busy}
                 value={sendUpdates}
                 onChange={(e) => setSendUpdates(e.target.value as 'all' | 'none')}
               >
@@ -1093,13 +1090,13 @@ export function EventEditor({
               </select>
             </label>
           )}
-        </fieldset>
-        {readOnly && canChangeColor && (
-          <fieldset disabled={busy} className="event-fields">
-            <div className="section-label">Color</div>
-            <EventColorPicker value={colorId} onChange={setColorId} />
-          </fieldset>
-        )}
+          {(!readOnly || canChangeColor) && (
+            <fieldset disabled={busy} className="event-color-field">
+              <legend>Color</legend>
+              <EventColorPicker value={colorId} onChange={setColorId} />
+            </fieldset>
+          )}
+        </div>
         {event?.attendees?.some((a) => a.self) && (
           <div className="rsvp">
             <span>Going?</span>

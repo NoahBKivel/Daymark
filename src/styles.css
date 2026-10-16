@@ -2080,3 +2080,45 @@ body:has([role='dialog']) .toast {
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+.event-preferences-grid {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.event-color-field {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.event-color-field legend {
+  padding: 0;
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--secondary);
+}
+@media (min-width: 901px) {
+  .modal-wide .editor-form > .event-preferences-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .event-preferences-grid > .event-color-field {
+    grid-column: 2;
+  }
+}
+@media (min-width: 901px) {
+  .event-preferences-grid > .event-color-field:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 901px) {
+  .modal-wide .event-editor-form,
+  .modal-wide .event-editor-form .event-fields {
+    row-gap: 8px;
+  }
+}

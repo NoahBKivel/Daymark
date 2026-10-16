@@ -10,7 +10,7 @@ import {
   demoState,
   writeDemo,
 } from './demo';
-import { colorDemoEvent, deleteDemoEvent } from './demo-events';
+import { colorDemoEvent, deleteDemoEvent, rescheduleDemoEvent } from './demo-events';
 import type {
   Backup,
   CalendarEvent,
@@ -122,6 +122,19 @@ export function makeClient(demo: boolean) {
       const s = demoState();
       s.events = deleteDemoEvent(s.events, event, scope);
       writeDemo(s);
+    },
+    rescheduleEvent: async (event: CalendarEvent, dates: Pick<CalendarEvent, 'start' | 'end'>) => {
+      if (!demo)
+        return request<CalendarEvent>(
+          `/events/${encodeURIComponent(event.calendarId)}/${encodeURIComponent(event.id)}/dates`,
+          'PATCH',
+          { ...dates, etag: event.etag },
+        );
+      const state = demoState();
+      const result = rescheduleDemoEvent(state.events, event, dates);
+      state.events = result.rows;
+      writeDemo(state);
+      return result.event;
     },
     setEventColor: async (event: CalendarEvent, colorId: string | null) => {
       if (!demo)

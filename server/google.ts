@@ -378,6 +378,45 @@ export class Google {
       e.etag,
     );
   }
+  async rescheduleEvent(
+    calendarId: string,
+    id: string,
+    dates: Pick<EventInput, 'start' | 'end'>,
+    etag?: string,
+  ) {
+    await this.writable(calendarId);
+    const event = await this.getEvent(calendarId, id);
+    if (etag && etag !== event.etag)
+      throw new HTTPException(409, {
+        message: 'This event changed elsewhere. Reload it before saving.',
+      });
+    if (event.eventType && event.eventType !== 'default')
+      throw new HTTPException(403, { message: 'Edit this special event in Google Calendar.' });
+    if (event.organizer && !event.organizer.self && !event.guestsCanModify)
+      throw new HTTPException(403, { message: 'Only the organizer can reschedule this event.' });
+    const changedType = !!event.start.date !== !!dates.start.date;
+    const body = changedType
+      ? {
+          start: {
+            ...dates.start,
+            ...(dates.start.date ? { dateTime: null, timeZone: null } : { date: null }),
+          },
+          end: {
+            ...dates.end,
+            ...(dates.end.date ? { dateTime: null, timeZone: null } : { date: null }),
+          },
+        }
+      : dates;
+    return {
+      ...(await this.request<CalendarEvent>(
+        `${this.eventPath(calendarId, id)}?sendUpdates=all`,
+        'PATCH',
+        body,
+        event.etag,
+      )),
+      calendarId,
+    };
+  }
   async setEventColor(calendarId: string, id: string, colorId: string | null, etag?: string) {
     await this.writable(calendarId);
     const event = await this.getEvent(calendarId, id);
