@@ -127,6 +127,7 @@ export function ColorPicker({
         <button
           type="button"
           className={`color-inherit ${!value ? 'selected' : ''}`}
+          aria-pressed={!value}
           onClick={() => onChange(null)}
         >
           List color
@@ -387,7 +388,7 @@ export function TaskEditor({
           title: draft?.title || '',
           description: draft?.description || '',
           listId: lists[0]?.id || '',
-          color: DEFAULT_CALENDAR_COLOR.hex,
+          color: null,
           startDate: null,
           dueDate: date || null,
           dueTime: null,
