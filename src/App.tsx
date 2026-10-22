@@ -1129,13 +1129,22 @@ export default function App() {
                     {panelQuery.data?.hasMore ? '+' : ''}
                   </span>
                 </div>
-                <button
-                  className="icon-button small"
-                  aria-label="Add task"
-                  onClick={() => setEditor({ kind: 'task' })}
-                >
-                  <Plus size={18} />
-                </button>
+                <div className="task-panel-heading-actions">
+                  <button
+                    className="icon-button small"
+                    aria-label="Add task"
+                    onClick={() => setEditor({ kind: 'task' })}
+                  >
+                    <Plus size={18} />
+                  </button>
+                  <button
+                    className="icon-button task-panel-close"
+                    aria-label="Close task panel"
+                    onClick={() => setTaskPanel(false)}
+                  >
+                    <PanelRightClose size={19} />
+                  </button>
+                </div>
               </div>
               <div className="task-search">
                 <Search size={15} />

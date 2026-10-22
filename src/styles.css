@@ -878,6 +878,9 @@ a {
   font-size: 15px;
   font-weight: 550;
 }
+.task-panel-close {
+  display: none;
+}
 .count-pill {
   font-size: 10px;
   background: var(--soft);
@@ -1700,6 +1703,9 @@ input[type='checkbox'] {
   }
 }
 @media (max-width: 1050px) {
+  .task-panel-close {
+    display: flex;
+  }
   .topbar-center {
     display: none;
   }
@@ -1868,7 +1874,8 @@ input[type='checkbox'] {
     font-size: 11px;
     padding: 5px 9px;
   }
-  .task-panel-toggle {
+  .task-panel-toggle,
+  .task-panel-close {
     width: 28px;
     height: 28px;
   }
