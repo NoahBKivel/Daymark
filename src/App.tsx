@@ -1119,7 +1119,7 @@ export default function App() {
             </footer>
           </main>
           {taskPanel && (
-            <aside className="task-panel">
+            <aside className="task-panel" aria-label="Tasks">
               <div className="task-panel-heading">
                 <div>
                   <ListTodo size={18} />
@@ -1189,7 +1189,12 @@ export default function App() {
                   ))}
                 </select>
               </div>
-              <div className="panel-task-list">
+              <div className="panel-task-list" aria-busy={panelQuery.isFetching}>
+                {panelQuery.isLoading && (
+                  <p className="task-panel-status" role="status">
+                    Loading tasks…
+                  </p>
+                )}
                 {panelQuery.isError && (
                   <p className="form-error">
                     Couldn’t load tasks.{' '}
@@ -1198,7 +1203,7 @@ export default function App() {
                     </button>
                   </p>
                 )}
-                {!panelQuery.isLoading && !taskRows.length && (
+                {!panelQuery.isLoading && !panelQuery.isError && !taskRows.length && (
                   <div className="empty-tasks">
                     <CheckCheck size={30} />
                     <strong>No tasks</strong>
@@ -1216,6 +1221,8 @@ export default function App() {
                     <div className={`panel-task ${t.completed ? 'completed' : ''}`} key={t.id}>
                       <button
                         className={`task-checkbox ${t.completed ? 'checked' : ''}`}
+                        role="checkbox"
+                        aria-checked={t.completed}
                         aria-label={`${t.completed ? 'Reopen' : 'Complete'} ${t.title}`}
                         onClick={() => void toggleTask(t)}
                       >
@@ -1231,9 +1238,9 @@ export default function App() {
                             className="list-dot"
                             style={{ background: t.color || list?.color }}
                           />
-                          {list?.name}
+                          <span className="task-list-name">{list?.name}</span>
                           <span className="meta-separator">·</span>
-                          <span className={overdue ? 'overdue-text' : ''}>
+                          <span className={`task-due-date ${overdue ? 'overdue-text' : ''}`}>
                             {t.dueDate
                               ? t.dueDate === todayString()
                                 ? 'Today'

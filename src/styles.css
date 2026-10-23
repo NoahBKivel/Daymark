@@ -855,7 +855,7 @@ a {
   width: 278px;
   flex-shrink: 0;
   border-left: 1px solid var(--line);
-  padding: 30px 21px 18px;
+  padding: 24px 21px 18px;
   display: flex;
   flex-direction: column;
   background: var(--sidebar-bg);
@@ -879,7 +879,7 @@ a {
   font-weight: 550;
 }
 .task-panel-close {
-  display: none;
+  display: flex;
 }
 .count-pill {
   font-size: 10px;
@@ -896,7 +896,7 @@ a {
   margin-top: 8px;
 }
 .task-search {
-  height: 34px;
+  height: 38px;
   border: 1px solid var(--line);
   background: var(--bg);
   border-radius: 6px;
@@ -904,11 +904,11 @@ a {
   align-items: center;
   padding: 0 9px;
   gap: 7px;
-  margin-top: 22px;
+  margin-top: 18px;
   color: var(--muted);
 }
-.task-search input {
-  font-size: 11px;
+.task-search input:not([type='checkbox']):not([type='color']) {
+  font-size: 12px;
   width: 100%;
   border: 0;
   background: none;
@@ -925,12 +925,14 @@ a {
   justify-content: space-between;
 }
 .task-filter-row select {
-  font-size: 10px;
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
   color: var(--secondary);
-  border: 0;
-  background: none;
-  padding: 4px 1px;
-  max-width: 120px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 7px 5px;
+  text-overflow: ellipsis;
 }
 .panel-task-list {
   flex: 1;
@@ -2061,7 +2063,7 @@ body:has([role='dialog']) .toast {
   .panel-task-meta {
     font-size: 10px;
   }
-  .task-search input {
+  .task-search input:not([type='checkbox']):not([type='color']) {
     font-size: 12px;
   }
   .mini-grid > button {
@@ -2128,4 +2130,99 @@ body:has([role='dialog']) .toast {
   .modal-wide .event-editor-form .event-fields {
     row-gap: 8px;
   }
+}
+
+/* Keep the sidebar's compact controls legible and keyboard accessible. */
+.task-panel-heading > div {
+  min-width: 0;
+}
+.task-panel-heading .task-panel-heading-actions {
+  gap: 4px;
+  flex-shrink: 0;
+}
+.task-search > svg,
+.task-search > button {
+  flex-shrink: 0;
+}
+.task-search:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.task-search input:not([type='checkbox']):not([type='color']):focus {
+  border: 0;
+  outline: none;
+}
+.task-panel .task-search input::placeholder {
+  color: var(--secondary);
+}
+.task-panel .panel-task-title {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.task-panel .panel-task-meta {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  font-size: 11px;
+  color: var(--secondary);
+  line-height: 1.5;
+}
+.panel-task-meta .task-list-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.panel-task-meta .task-due-date {
+  white-space: nowrap;
+}
+.task-panel .check-progress {
+  font-size: 11px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+.task-panel .task-checkbox {
+  width: 20px;
+  height: 20px;
+}
+.panel-task-body:hover .panel-task-title {
+  color: var(--accent);
+}
+.panel-task-body:focus-visible {
+  border-radius: 4px;
+}
+.task-panel .count-pill {
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary);
+}
+.task-panel .add-task-inline {
+  min-height: 44px;
+  color: var(--accent);
+}
+.task-panel-status {
+  padding: 20px 0;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.task-panel .empty-tasks {
+  color: var(--secondary);
+}
+@media (max-width: 600px) {
+  .task-panel .task-search {
+    height: 44px;
+  }
+  .task-panel .task-search input:not([type='checkbox']):not([type='color']) {
+    font-size: 16px;
+  }
+  .task-panel .task-filter-row select {
+    min-height: 40px;
+    font-size: 12px;
+  }
+  .task-panel .task-checkbox {
+    width: 24px;
+    height: 24px;
+  }
+}
+.task-search input:not([type='checkbox']):not([type='color']) {
+  min-width: 0;
+  padding: 0;
 }
