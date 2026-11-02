@@ -191,12 +191,14 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(todayString);
   const [now, setNow] = useState(DateTime.now);
   const [sidebar, setSidebar] = useState(() => window.innerWidth > 900);
-  const [taskPanel, setTaskPanel] = useState(() => window.innerWidth > 1100);
+  const [taskPanel, setTaskPanel] = useState(false);
   useEffect(() => {
     const left = matchMedia('(min-width: 901px)');
     const right = matchMedia('(min-width: 1101px)');
     const updateLeft = () => setSidebar(left.matches);
-    const updateRight = () => setTaskPanel(right.matches);
+    const updateRight = () => {
+      if (!right.matches) setTaskPanel(false);
+    };
     left.addEventListener('change', updateLeft);
     right.addEventListener('change', updateRight);
     return () => {

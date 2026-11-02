@@ -8,14 +8,18 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/?demo=1');
 });
 
-test('opens desktop panels when a narrow window is widened', async ({ page }) => {
+test('keeps tasks closed by default when a narrow window is widened', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 900 });
   await page.reload();
   await expect(page.locator('.sidebar')).toHaveCount(0);
   await expect(page.locator('.task-panel')).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(page.locator('.sidebar')).toBeVisible();
+  await expect(page.locator('.task-panel')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Toggle task panel', exact: true }).click();
   await expect(page.locator('.task-panel')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.task-panel')).toHaveCount(0);
   await page.setViewportSize({ width: 1000, height: 900 });
   await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
   await page.setViewportSize({ width: 1020, height: 900 });
