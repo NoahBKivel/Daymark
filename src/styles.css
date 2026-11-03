@@ -2226,3 +2226,19 @@ body:has([role='dialog']) .toast {
   min-width: 0;
   padding: 0;
 }
+
+/* Time markers use one compact line rather than implying a duration. */
+.fc-timegrid .event-card-instant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 3px 6px;
+}
+.fc-timegrid .event-card-instant .event-card-title {
+  flex: 1;
+}
+.fc-timegrid .event-card-instant .event-card-time {
+  flex-shrink: 0;
+  margin-top: 0;
+}

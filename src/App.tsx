@@ -47,6 +47,7 @@ import {
   formatTime,
   isOverdue,
   isPastEvent,
+  isInstantEvent,
   taskOverlaps,
 } from './shared/dates';
 import {
@@ -470,7 +471,12 @@ export default function App() {
         id: `event:${e.calendarId}:${e.id}`,
         title: e.summary,
         start: e.start.date || e.start.dateTime,
-        end: e.end.date || e.end.dateTime,
+        // FullCalendar replaces equal boundaries with its default duration.
+        // A rendering-only tick keeps markers compact; the stored event stays unchanged.
+        end: isInstantEvent(e)
+          ? DateTime.fromISO(e.start.dateTime!).plus({ milliseconds: 1 }).toISO()!
+          : e.end.date || e.end.dateTime,
+        durationEditable: !isInstantEvent(e),
         allDay: !!e.start.date,
         editable:
           !pendingEventDates[`${e.calendarId}:${e.id}`] &&
@@ -601,7 +607,10 @@ export default function App() {
       color: string;
     };
     return (
-      <div className="event-card" style={{ '--event-color': color } as React.CSSProperties}>
+      <div
+        className={`event-card ${event && isInstantEvent(event) ? 'event-card-instant' : ''}`}
+        style={{ '--event-color': color } as React.CSSProperties}
+      >
         <div className="event-card-title">
           {kind === 'task' && task ? (
             <button
@@ -623,8 +632,10 @@ export default function App() {
         {kind === 'event' && event?.start.dateTime && (
           <div className="event-card-time">
             <Clock3 size={11} />
-            {formatTime(event.start.dateTime, settings.timeZone, settings.hour24)}–
-            {formatTime(event.end.dateTime!, settings.timeZone, settings.hour24)}
+            {formatTime(event.start.dateTime, settings.timeZone, settings.hour24)}
+            {!isInstantEvent(event) && event.end.dateTime && (
+              <>–{formatTime(event.end.dateTime, settings.timeZone, settings.hour24)}</>
+            )}
           </div>
         )}
         {task?.dueTime && arg.isEnd && (
@@ -944,6 +955,7 @@ export default function App() {
                 editable
                 selectable
                 selectMirror
+                eventMinHeight={28}
                 eventResizableFromStart
                 dayMaxEvents={3}
                 expandedWeekDate={monthDayIsExpanded ? expandedMonthDay!.date : ''}
@@ -1054,7 +1066,10 @@ export default function App() {
                           : { dateTime: info.event.startStr, timeZone: settings.timeZone },
                         end: info.event.allDay
                           ? { date: info.event.endStr.slice(0, 10) }
-                          : { dateTime: info.event.endStr, timeZone: settings.timeZone },
+                          : {
+                              dateTime: isInstantEvent(e) ? info.event.startStr : info.event.endStr,
+                              timeZone: settings.timeZone,
+                            },
                       };
                       const key = `${e.calendarId}:${e.id}`;
                       setPendingEventDates((pending) => ({ ...pending, [key]: moved }));

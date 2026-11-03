@@ -204,8 +204,8 @@ export const eventInputSchema = z
       });
     if ((e.start.date || e.start.dateTime || '') >= (e.end.date || e.end.dateTime || '') && allDay)
       ctx.addIssue({ code: 'custom', message: 'Event end must follow its start' });
-    if (!allDay && Date.parse(e.end.dateTime || '') <= Date.parse(e.start.dateTime || ''))
-      ctx.addIssue({ code: 'custom', message: 'Event end must follow its start' });
+    if (!allDay && Date.parse(e.end.dateTime || '') < Date.parse(e.start.dateTime || ''))
+      ctx.addIssue({ code: 'custom', message: 'Event end cannot be before its start' });
   });
 export type EventInput = z.infer<typeof eventInputSchema>;
 export type RangeData = { tasks: Task[]; events: CalendarEvent[]; errors: string[] };

@@ -99,7 +99,22 @@ export function expandTasks(rows: Task[], start: string, end: string): Task[] {
 export function occurrenceFor(series: Task, date: string): Task | undefined {
   return expandTasks([series], date, addDays(date, 1)).find((t) => t.originalDate === date);
 }
+export function isInstantEvent(event: Pick<CalendarEvent, 'start' | 'end'>): boolean {
+  return (
+    !!event.start.dateTime &&
+    !!event.end.dateTime &&
+    Date.parse(event.start.dateTime) === Date.parse(event.end.dateTime)
+  );
+}
 export function eventOverlaps(e: CalendarEvent, start: string, end: string): boolean {
+  if (isInstantEvent(e)) {
+    const instant = DateTime.fromISO(e.start.dateTime!, { setZone: true });
+    const zone = e.start.timeZone || instant.zone;
+    return (
+      instant.toMillis() >= DateTime.fromISO(start, { zone }).toMillis() &&
+      instant.toMillis() < DateTime.fromISO(end, { zone }).toMillis()
+    );
+  }
   return overlaps(
     e.start.date || e.start.dateTime || '',
     e.end.date || e.end.dateTime || '',
